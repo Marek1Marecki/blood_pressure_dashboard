@@ -1,0 +1,18 @@
+# Dashboard Pomiarów Ciśnienia Krwi - Wymagane biblioteki
+
+# Framework webowy
+dash>=2.14.0
+dash-core-components>=2.0.0
+dash-html-components>=2.0.0
+
+# Analiza danych
+pandas>=1.5.0
+
+# Wizualizacje
+plotly>=5.17.0
+
+# Obsługa plików Excel
+openpyxl>=3.1.0
+
+# Opcjonalne (do exportu zaawansowanego)
+# kaleido>=0.2.1  # Export wykresów do PNG/PDF

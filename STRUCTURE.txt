@@ -1,0 +1,236 @@
+╔════════════════════════════════════════════════════════════════════════╗
+║  💓 BLOOD PRESSURE DASHBOARD - STRUKTURA MODULARNA                     ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+blood_pressure_dashboard/
+│
+├── 📄 app.py                          # GŁÓWNY PLIK - uruchamiasz ten
+│   ├── Import modułów
+│   ├── Inicjalizacja aplikacji
+│   ├── Layout (struktura zakładek)
+│   ├── Callbacki (reaktywność)
+│   └── Uruchomienie serwera
+│
+├── ⚙️ config.py                       # KONFIGURACJA - stałe, progi, kolory
+│   ├── NAZWA_PLIKU_EXCEL = "Pomiary_SYS_DIA.xlsx"
+│   ├── STANDARDOWE_GODZINY = [10, 13, 16, 19, 22]
+│   ├── PROGI_ESC = {...}
+│   ├── KOLORY_ESC = {...}
+│   ├── KOLORY_PARAMETROW = {...}
+│   └── TEMPLATE_PLOTLY = "plotly_white"
+│
+├── 🔄 data_processing.py              # PRZETWARZANIE DANYCH
+│   ├── def klasyfikuj_cisnienie_esc(row)
+│   │   └── Klasyfikuje pomiar według ESC/ESH
+│   └── def wczytaj_i_przetworz_dane(sciezka_pliku)
+│       ├── Wczytuje Excel
+│       ├── Oblicza MAP, PP
+│       ├── Dodaje cechy czasowe
+│       ├── Klasyfikuje pomiary
+│       └── Zwraca (DataFrame, komunikat)
+│
+├── 📊 charts/                         # MODUŁ WYKRESÓW
+│   │
+│   ├── __init__.py                    # Import wszystkich wykresów
+│   │   └── Eksportuje wszystkie funkcje generate_*
+│   │
+│   ├── utils.py                       # Narzędzia wspólne
+│   │   └── def utworz_pusty_wykres(tytul)
+│   │
+│   ├── trend.py                       # 📈 Trend w czasie
+│   │   └── def generate_trend_chart(df)
+│   │       ├── Linie: SYS, DIA, PUL, MAP, PP
+│   │       └── Progi ESC jako linie poziome
+│   │
+│   ├── circadian.py                   # 🕒 Rytm dobowy
+│   │   └── def generate_circadian_rhythm_chart(df)
+│   │       ├── Grupowanie po godzinach
+│   │       ├── Średnia ± odchylenie standardowe
+│   │       └── Zakres wypełniony kolorem
+│   │
+│   ├── correlation.py                 # ❤️ Korelacje
+│   │   └── def generate_correlation_chart(df)
+│   │       └── Scatter SYS vs DIA (kolor=PUL)
+│   │
+│   ├── heatmap.py                     # 🌡️ Heatmapa
+│   │   └── def generate_heatmap_chart(df)
+│   │       └── Pivot table: Dzień x Godzina
+│   │
+│   ├── histogram.py                   # 📊 Histogramy
+│   │   └── def generate_histogram_chart(df, column)
+│   │       ├── Histogram dla SYS/DIA/PUL
+│   │       └── Linie progowe ESC
+│   │
+│   ├── classification.py              # 🗺️ Klasyfikacja
+│   │   ├── def generate_classification_matrix_chart(df)
+│   │   │   ├── Macierz 2D (SYS x DIA)
+│   │   │   └── 7 stref kolorowych ESC
+│   │   └── def generate_esc_category_bar_chart(df)
+│   │       ├── Wykres słupkowy
+│   │       └── Liczba pomiarów w każdej kategorii
+│   │
+│   ├── comparison.py                  # ⚖️ Porównania
+│   │   └── def generate_comparison_chart(df, category, type)
+│   │       ├── Boxplot lub Violin
+│   │       └── Porównanie godzin / dni tygodnia
+│   │
+│   └── summary.py                     # 📊 Podsumowanie
+│       └── def generate_summary_data(df)
+│           ├── Oblicza KPI (średnie, max, %)
+│           └── Generuje wykres kołowy
+│
+├── 🎨 layouts/                        # (OPCJONALNY) Moduł layoutów
+│   ├── __init__.py
+│   └── tabs.py                        # Definicje zakładek
+│       ├── summary_tab()
+│       ├── esc_classification_tab()
+│       ├── trend_tab()
+│       └── ...
+│
+├── 🔄 callbacks/                      # (OPCJONALNY) Moduł callbacków
+│   ├── __init__.py
+│   └── callbacks.py                   # Wszystkie callbacki
+│       ├── refresh_data()
+│       ├── update_summary()
+│       ├── update_trend()
+│       └── ...
+│
+├── 📋 README.md                       # Dokumentacja główna
+│   ├── Struktura projektu
+│   ├── Jak uruchomić
+│   ├── Jak dodać zakładkę (7 kroków)
+│   └── Kategorie ESC/ESH
+│
+├── 📝 QUICK_START.md                  # Szybki przewodnik
+│   ├── Checklista 7 kroków
+│   ├── Szablon funkcji
+│   ├── Częste operacje na DataFrame
+│   └── Mini-przykład
+│
+├── 🎓 EXAMPLE_NEW_TAB.md              # Kompletny przykład
+│   └── Dodanie zakładki "Statystyki Miesięczne"
+│       ├── Kod charts/monthly_stats.py
+│       ├── Wszystkie zmiany w plikach
+│       └── Możliwe rozszerzenia
+│
+├── 📊 Pomiary_SYS_DIA.xlsx            # Plik danych (generowany przez użytkownika)
+│   └── Kolumny: Data, Godzina, SYS, DIA, PUL
+│
+└── 📦 requirements.txt                # (OPCJONALNY) Zależności
+    ├── dash>=2.0.0
+    ├── pandas>=1.3.0
+    ├── plotly>=5.0.0
+    └── openpyxl>=3.0.0
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║  PRZEPŁYW DANYCH                                                       ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+1. Pomiary_SYS_DIA.xlsx
+   ↓
+2. data_processing.wczytaj_i_przetworz_dane()
+   ↓ (DataFrame + komunikat)
+3. app.py - Inicjalizacja
+   ↓
+4. charts.generate_*_chart(df) → Wykresy początkowe
+   ↓
+5. app.layout → Wyświetlenie w przeglądarce
+   ↓
+6. Użytkownik klika "Odśwież" lub zmienia parametry
+   ↓
+7. Callback aktualizuje dane w dcc.Store
+   ↓
+8. Kolejne callbacki aktualizują poszczególne wykresy
+   ↓
+9. Przeglądarka wyświetla zaktualizowane wykresy
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║  JAK DODAĆ NOWĄ ZAKŁADKĘ? (Krótka wersja)                             ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+1. charts/nowy.py          → def generate_nowy_chart(df)
+2. charts/__init__.py      → import + __all__
+3. app.py (import)         → from charts import generate_nowy_chart
+4. app.py (initial)        → initial_fig_nowy = generate_nowy_chart(initial_df)
+5. app.py (layout)         → dcc.Tab(..., dcc.Graph(id='graph-nowy', ...))
+6. app.py (callback)       → @callback(...) def update_nowy(...)
+7. (opcja) app.py (export) → Dodaj do wykresy dict
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║  ISTNIEJĄCE ZAKŁADKI                                                   ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+📊 Podsumowanie          → KPI + wykres kołowy klasyfikacji
+🏥 Klasyfikacja ESC      → Opis kategorii + wykres słupkowy
+🗺️ Macierz              → Macierz klasyfikacji 2D (SYS x DIA)
+📈 Trend                 → Trend ciśnienia w czasie
+🕒 Rytm dobowy           → Średnie ciśnienie wg godziny
+❤️ Korelacje             → Scatter SYS vs DIA (kolor=PUL)
+🌡️ Heatmapa              → Mapa cieplna (dzień x godzina)
+⚖️ Porównanie            → Box/Violin (godziny / dzień roboczy)
+📊 Rozkład               → Histogramy SYS/DIA/PUL
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║  ZALETY STRUKTURY MODULARNEJ                                           ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+✅ Jeden wykres = Jeden plik (łatwość utrzymania)
+✅ Łatwe dodawanie zakładek (7 kroków, ~5 minut)
+✅ Separacja odpowiedzialności (data/charts/layout/callbacks)
+✅ Reużywalność (możesz skopiować wykres do innego projektu)
+✅ Czytelność (app.py < 300 linii zamiast 1000+)
+✅ Testowanie (każdy moduł można testować osobno)
+✅ Współpraca (różne osoby mogą pracować nad różnymi wykresami)
+✅ Skalowanie (łatwo dodać 20+ zakładek bez bałaganu)
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║  PLIKI DO EDYCJI                                                       ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+🎯 CZĘSTO:
+   • charts/nowy.py         - Dodajesz nowe wykresy
+
+⚙️ CZASAMI:
+   • config.py              - Zmieniasz progi, kolory
+   • app.py                 - Dodajesz zakładki, callbacki
+
+🔒 RZADKO:
+   • data_processing.py     - Zmieniasz logikę przetwarzania
+   • charts/utils.py        - Dodajesz funkcje pomocnicze
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║  ROZMIARY PLIKÓW (orientacyjnie)                                       ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+app.py                  ~300 linii   (zamiast 1000+ w wersji monolitycznej)
+config.py               ~60 linii
+data_processing.py      ~80 linii
+charts/*.py             ~40-80 linii każdy
+README.md               ~200 linii
+QUICK_START.md          ~150 linii
+EXAMPLE_NEW_TAB.md      ~250 linii
+
+TOTAL: ~1200 linii podzielonych na ~15 plików
+vs. 1000+ linii w JEDNYM pliku (wersja poprzednia)
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║  URUCHOMIENIE                                                          ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+$ python app.py
+
+Otwórz: http://127.0.0.1:8050
+
+
+╔════════════════════════════════════════════════════════════════════════╗
+║  AUTOR: Struktura modularna dla łatwego rozwoju                        ║
+║  WERSJA: 2.0 (Modularna)                                               ║
+║  DATA: 2024                                                            ║
+╚════════════════════════════════════════════════════════════════════════╝
