@@ -27,7 +27,7 @@ def klasyfikuj_cisnienie_esc(row):
         return "Izolowane nadciśnienie skurczowe"
 
     # Nadciśnienie 3° (SYS ≥180 LUB DIA ≥110)
-    if sys >= PROGI_ESC['nadcisnienie_2']['sys'] or dia >= PROGI_ESC['nadcisnienie_2']['dia']:
+    if sys >= PROGI_ESC['nadcisnienie_3']['sys'] or dia >= PROGI_ESC['nadcisnienie_3']['dia']:
         return "Nadciśnienie 3°"
 
     # Nadciśnienie 2° (SYS 160-179 LUB DIA 100-109)
