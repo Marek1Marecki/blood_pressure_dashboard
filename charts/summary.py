@@ -23,9 +23,8 @@ def generate_summary_data(df):
         max_sys_row = df.loc[df['SYS'].idxmax()]
         max_reading_text = f"{max_sys_row['SYS']:.0f} / {max_sys_row['DIA']:.0f}"
 
-        # Pomiary w normie (Optymalne + Prawidłowe + Podwyższone)
-        # Zgodnie z aktualnymi wytycznymi: ciśnienie poniżej 140/90 uważa się za niepowikłane
-        in_norm = df['Kategoria'].isin(['Optymalne', 'Prawidłowe', 'Podwyższone'])
+        # Pomiary w normie (Optymalne + Prawidłowe) - zgodnie z wytycznymi <130/80
+        in_norm = df['Kategoria'].isin(['Optymalne', 'Prawidłowe'])
         in_norm_count = in_norm.sum()
         norm_percent_text = f"{(in_norm_count / len(df) * 100):.1f}%"
 

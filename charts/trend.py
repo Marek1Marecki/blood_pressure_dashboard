@@ -23,23 +23,20 @@ def generate_trend_chart(df):
     try:
         fig = go.Figure()
 
-        # Dodawanie śladów dla każdego parametru
+        # Dodawanie śladów dla każdego parametru (bez MAP i PP)
         parametry = [
             ('SYS', 'SYS (Skurczowe)', 'lines+markers'),
             ('DIA', 'DIA (Rozkurczowe)', 'lines+markers'),
             ('PUL', 'Puls', 'lines+markers'),
-            ('MAP', 'MAP (Śr. ciśnienie tętnicze)', 'lines'),
-            ('PP', 'PP (Ciśnienie tętna)', 'lines')
         ]
 
         for param, nazwa, mode in parametry:
-            dash_style = 'dot' if param == 'MAP' else ('dash' if param == 'PP' else 'solid')
             fig.add_trace(go.Scatter(
                 x=df['Datetime'],
                 y=df[param],
                 mode=mode,
                 name=nazwa,
-                line=dict(color=KOLORY_PARAMETROW[param], dash=dash_style)
+                line=dict(color=KOLORY_PARAMETROW[param])
             ))
 
         # Linie progowe wg aktualnych wytycznych
@@ -63,6 +60,14 @@ def generate_trend_chart(df):
             xaxis_title="Data i godzina",
             yaxis_title="Wartość",
             legend_title="Parametr",
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.2,
+                xanchor="center",
+                x=0.5
+            ),
+            margin=dict(b=100),  # Zwiększony dolny margines
             template=TEMPLATE_PLOTLY,
             hovermode='x unified'
         )

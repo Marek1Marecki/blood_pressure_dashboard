@@ -53,8 +53,9 @@ from charts import (
     generate_histogram_chart,
     generate_classification_matrix_chart,
     generate_esc_category_bar_chart,
-    generate_comparison_chart,
-    generate_summary_data
+    generate_summary_data,
+    generate_hemodynamics_chart
+    # generate_comparison_chart - używany w layouts/tabs.py
 )
 from layouts import create_app_layout
 from callbacks import register_callbacks
@@ -75,8 +76,9 @@ initial_figures = {
     'heatmap': generate_heatmap_chart(initial_df),
     'histogram': generate_histogram_chart(initial_df, 'SYS'),
     'matrix': generate_classification_matrix_chart(initial_df),
-    'comparison': generate_comparison_chart(initial_df, 'Godzina Pomiaru', 'box'),
-    'esc_bar': generate_esc_category_bar_chart(initial_df)
+    'esc_bar': generate_esc_category_bar_chart(initial_df),
+    'hemodynamics': generate_hemodynamics_chart(initial_df)
+    # comparison - generowany bezpośrednio w layouts/tabs.py
 }
 
 # KPI
@@ -98,11 +100,12 @@ app.layout = create_app_layout(
     initial_df_json=initial_df_json,
     initial_status=initial_status,
     initial_kpis=initial_kpis,
-    initial_figures=initial_figures
+    initial_figures=initial_figures,
+    initial_df=initial_df  # Dodajemy DataFrame dla zakładki porównawczej
 )
 
 # Callbacki
-register_callbacks(app, initial_df)
+register_callbacks(app)
 
 
 # =============================================================================
@@ -113,17 +116,17 @@ if __name__ == '__main__':
     ╔═══════════════════════════════════════════════════════════════╗
     ║   💓 Dashboard Pomiarów Ciśnienia Krwi                        ║
     ║   📋 Zgodny z wytycznymi ESC/ESH                              ║
-    ║                                                               ║
+    ║                                                                ║
     ║   ✅ Aplikacja uruchomiona pomyślnie!                         ║
     ║   🌐 Otwórz przeglądarkę: http://127.0.0.1:8050               ║
-    ║                                                               ║
+    ║                                                                ║
     ║   📂 Struktura modularna - łatwe dodawanie zakładek!          ║
     ║   📊 9 zakładek z analizami                                   ║
     ║   🔄 Automatyczne odświeżanie danych                          ║
     ║   📥 Eksport do HTML                                          ║
-    ║                                                               ║
+    ║                                                                ║
     ║   📚 Dokumentacja: README.md                                  ║
-    ║   ⚡ Szybki start: QUICK_START.md                              ║
+    ║   ⚡ Szybki start: QUICK_START.md                             ║
     ║   🎓 Przykład: EXAMPLE_NEW_TAB.md                             ║
     ╚═══════════════════════════════════════════════════════════════╝
     """)

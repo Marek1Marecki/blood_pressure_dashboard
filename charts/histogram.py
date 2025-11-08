@@ -5,7 +5,7 @@ Histogram rozkładu parametrów
 
 import plotly.express as px
 from .utils import utworz_pusty_wykres
-from config import PROGI_ESC, TEMPLATE_PLOTLY
+from config import PROGI_ESC, TEMPLATE_PLOTLY, KOLORY_PARAMETROW
 
 
 def generate_histogram_chart(df, selected_column):
@@ -14,12 +14,25 @@ def generate_histogram_chart(df, selected_column):
         return utworz_pusty_wykres()
 
     try:
-        fig = px.histogram(df, x=selected_column, nbins=20,
-                          title=f"Rozkład wartości dla: {selected_column}")
+        # Kolory dla histogramu zgodne z wykresem trendu
+        color_map = {
+            'SYS': KOLORY_PARAMETROW['SYS'],
+            'DIA': KOLORY_PARAMETROW['DIA'],
+            'PUL': KOLORY_PARAMETROW['PUL']
+        }
+
+        fig = px.histogram(
+            df,
+            x=selected_column,
+            nbins=20,
+            title=f"Rozkład wartości dla: {selected_column}",
+            color_discrete_sequence=[color_map.get(selected_column, 'blue')]
+        )
 
         mean_val = df[selected_column].mean()
-        fig.add_vline(x=mean_val, line_dash="dash", line_color="red",
-                     annotation_text=f"Średnia: {mean_val:.1f}")
+        fig.add_vline(x=mean_val, line_dash="dash", line_color="black",
+                     annotation_text=f"Średnia: {mean_val:.1f}",
+                     annotation_position="top right")
 
         # Dodanie linii progowych wg aktualnych wytycznych
         if selected_column == 'SYS':

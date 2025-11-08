@@ -13,6 +13,7 @@ from .classification import (
 )
 from .comparison import generate_comparison_chart
 from .summary import generate_summary_data
+from .hemodynamics import generate_hemodynamics_chart
 
 __all__ = [
     'generate_trend_chart',
@@ -23,5 +24,6 @@ __all__ = [
     'generate_classification_matrix_chart',
     'generate_esc_category_bar_chart',
     'generate_comparison_chart',
-    'generate_summary_data'
+    'generate_summary_data',
+    'generate_hemodynamics_chart'
 ]
