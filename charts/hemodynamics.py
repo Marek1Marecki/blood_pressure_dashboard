@@ -1,5 +1,14 @@
-"""
-Wykres analizy hemodynamicznej - trend PP i MAP w czasie
+"""Moduł odpowiedzialny za generowanie wykresu analizy hemodynamicznej.
+
+Ten moduł dostarcza funkcję do tworzenia wykresu liniowego, który
+przedstawia trend dwóch kluczowych wskaźników hemodynamicznych w czasie:
+-   **PP (Pulse Pressure - Ciśnienie Tętna)**: Różnica między ciśnieniem
+    skurczowym a rozkurczowym (SYS - DIA).
+-   **MAP (Mean Arterial Pressure - Średnie Ciśnienie Tętnicze)**:
+    Średnie ciśnienie w tętnicach podczas jednego cyklu pracy serca.
+
+Wykres zawiera również linie referencyjne dla ciśnienia tętna,
+co ułatwia interpretację kliniczną wyników.
 """
 
 import plotly.graph_objects as go
@@ -8,14 +17,24 @@ from config import TEMPLATE_PLOTLY, WYSOKOSC_WYKRESU_STANDARD, KOLORY_PARAMETROW
 
 
 def generate_hemodynamics_chart(df):
-    """
-    Generuje wykres trendu parametrów hemodynamicznych (PP i MAP) w czasie.
+    """Generuje wykres trendu wskaźników hemodynamicznych (PP i MAP).
+
+    Tworzy wykres liniowy z dwiema seriami danych:
+    1.  Ciśnienie Tętna (PP), obliczone jako `SYS - DIA`.
+    2.  Średnie Ciśnienie Tętnicze (MAP), obliczone jako `(SYS + 2*DIA) / 3`.
+
+    Na wykresie umieszczone są poziome linie referencyjne dla PP (40 mmHg
+    jako wartość normalna i 60 mmHg jako wartość podwyższona), co ułatwia
+    ocenę ryzyka sercowo-naczyniowego.
 
     Args:
-        df: DataFrame z pomiarami
+        df (pd.DataFrame): Ramka danych zawierająca przetworzone pomiary,
+            w tym kolumny 'Datetime', 'SYS' i 'DIA', na podstawie których
+            obliczone są 'PP' i 'MAP'.
 
     Returns:
-        go.Figure: Wykres Plotly
+        go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
+            błędu, zwraca pusty wykres z komunikatem.
     """
     if df.empty:
         return utworz_pusty_wykres()

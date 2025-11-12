@@ -1,5 +1,13 @@
-"""
-Wykres trendu ciśnienia i pulsu w czasie
+"""Moduł odpowiedzialny za generowanie wykresu trendu w czasie.
+
+Ten moduł dostarcza funkcję do tworzenia wykresu liniowego, który
+wizualizuje zmiany wartości ciśnienia skurczowego (SYS), rozkurczowego
+(DIA) oraz pulsu (PUL) w funkcji czasu.
+
+Wykres ten jest kluczowym narzędziem do obserwacji długoterminowych
+trendów, sezonowych wahań oraz wpływu zmian w stylu życia czy leczeniu
+na wartości ciśnienia. Na wykresie umieszczone są również linie progowe
+dla ciśnienia skurczowego, co ułatwia szybką ocenę pomiarów.
 """
 
 import plotly.graph_objects as go
@@ -8,14 +16,25 @@ from config import KOLORY_PARAMETROW, PROGI_ESC, TEMPLATE_PLOTLY
 
 
 def generate_trend_chart(df):
-    """
-    Generuje wykres trendu ciśnienia i pulsu w czasie.
+    """Generuje wykres liniowy trendu ciśnienia i pulsu w czasie.
+
+    Funkcja tworzy wykres liniowy, na którym oś X reprezentuje czas,
+    a oś Y wartości pomiarów. Na wykresie przedstawione są trzy serie
+    danych: ciśnienie skurczowe (SYS), ciśnienie rozkurczowe (DIA)
+    oraz puls (PUL).
+
+    Dodatkowo, na wykresie umieszczone są poziome linie referencyjne
+    oznaczające kluczowe progi dla ciśnienia skurczowego (120 mmHg
+    dla ciśnienia optymalnego i 140 mmHg dla podwyższonego), co ułatwia
+    interpretację wizualną.
 
     Args:
-        df: DataFrame z pomiarami
+        df (pd.DataFrame): Ramka danych zawierająca przetworzone pomiary,
+            w tym kolumny 'Datetime', 'SYS', 'DIA' i 'PUL'.
 
     Returns:
-        go.Figure: Wykres Plotly
+        go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
+            błędu, zwraca pusty wykres z komunikatem.
     """
     if df.empty:
         return utworz_pusty_wykres()

@@ -1,5 +1,10 @@
-"""
-Wykres dobowego rytmu ciśnienia (statyczny i z oknem kroczącym)
+"""Moduł odpowiedzialny za generowanie wykresu rytmu dobowego ciśnienia.
+
+Ten moduł dostarcza funkcję do tworzenia wizualizacji, która przedstawia
+średnie wartości ciśnienia skurczowego (SYS) i rozkurczowego (DIA)
+w poszczególnych godzinach doby. Umożliwia to analizę wahań ciśnienia
+w cyklu 24-godzinnym. Wykres może być generowany w dwóch trybach:
+statycznym (średnia z całego okresu) oraz animowanym (kroczące okno 7-dniowe).
 """
 
 import pandas as pd
@@ -8,17 +13,32 @@ from .utils import utworz_pusty_wykres
 from config import KOLORY_PARAMETROW, TEMPLATE_PLOTLY
 
 def generate_circadian_rhythm_chart(df, start_date=None, end_date=None):
-    """
-    Generuje wykres dobowego rytmu ciśnienia.
-    Jeśli podane są daty, filtruje dane do podanego okresu.
+    """Generuje wykres rytmu dobowego, pokazujący wahania ciśnienia w ciągu doby.
+
+    Funkcja może działać w dwóch trybach:
+    1.  **Tryb statyczny**: Jeśli `start_date` i `end_date` nie są podane,
+        wykres pokazuje średnie wartości ciśnienia dla każdej godziny,
+        obliczone na podstawie całego dostępnego zakresu danych.
+    2.  **Tryb okna kroczącego**: Jeśli `start_date` i `end_date` są podane,
+        wykres pokazuje średnie wartości tylko dla danych z tego okresu,
+        co jest używane do tworzenia animacji.
+
+    Wizualizacja obejmuje średnie wartości SYS i DIA oraz zakresy odchylenia
+    standardowego, co pozwala ocenić zarówno tendencję centralną, jak
+    i zmienność pomiarów o różnych porach dnia.
 
     Args:
-        df (pd.DataFrame): DataFrame z pomiarami.
-        start_date (str, optional): Data początkowa okna.
-        end_date (str, optional): Data końcowa okna.
+        df (pd.DataFrame): Ramka danych zawierająca przetworzone pomiary,
+            w tym kolumny 'Datetime', 'Hour', 'SYS' i 'DIA'.
+        start_date (str lub datetime, optional): Data początkowa dla okna
+            kroczącego. Domyślnie None.
+        end_date (str lub datetime, optional): Data końcowa dla okna
+            kroczącego. Domyślnie None.
 
     Returns:
-        go.Figure: Wykres Plotly.
+        go.Figure: Obiekt wykresu Plotly, gotowy do wyświetlenia w aplikacji
+            Dash. W przypadku braku danych lub błędu, zwraca pusty wykres
+            z odpowiednim komunikatem.
     """
     if df.empty:
         return utworz_pusty_wykres()
