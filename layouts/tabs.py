@@ -1,5 +1,15 @@
-"""
-Definicje layoutów wszystkich zakładek aplikacji
+"""Moduł odpowiedzialny za definiowanie i składanie layoutu aplikacji.
+
+Ten plik zawiera funkcje, które generują komponenty HTML i Dash (dcc)
+dla poszczególnych elementów interfejsu użytkownika, takich jak:
+- Główny kontener aplikacji.
+- Nagłówek z tytułem i przyciskami.
+- Poszczególne zakładki (karty), z których każda zawiera odpowiednie
+  wykresy i komponenty interaktywne.
+
+Celem tego modułu jest separacja struktury (layoutu) od logiki
+(callbacków), co przyczynia się do większej czytelności i łatwości
+utrzymania kodu.
 """
 
 from dash import dcc, html
@@ -8,8 +18,31 @@ from charts import generate_comparison_chart
 
 
 def create_app_layout(initial_df_json, initial_status, initial_kpis, initial_figures, initial_df):
-    """
-    Tworzy pełny layout aplikacji.
+    """Tworzy i zwraca kompletny layout całej aplikacji Dash.
+
+    Ta funkcja jest centralnym punktem budowania interfejsu użytkownika.
+    Składa ona poszczególne komponenty, takie jak nagłówek i zakładki,
+    w jedną, spójną strukturę. Inicjalizuje również `dcc.Store` -
+    komponent przechowujący dane w pamięci przeglądarki, co umożliwia
+    efektywną komunikację między callbackami bez potrzeby ciągłego
+    odczytywania plików.
+
+    Args:
+        initial_df_json (str): Początkowe dane w formacie JSON, które
+            zostaną załadowane do `dcc.Store`.
+        initial_status (str): Początkowy komunikat o statusie,
+            wyświetlany w nagłówku.
+        initial_kpis (tuple): Krotka zawierająca początkowe wartości
+            kluczowych wskaźników (KPI).
+        initial_figures (dict[str, go.Figure]): Słownik zawierający
+            początkowo wygenerowane wykresy.
+        initial_df (pd.DataFrame): Surowe dane w formacie DataFrame,
+            potrzebne do niektórych specyficznych komponentów, np.
+            wykresu porównawczego.
+
+    Returns:
+        html.Div: Główny komponent Div, reprezentujący cały layout
+            aplikacji.
     """
     return html.Div([
         dcc.Store(id='data-store', data=initial_df_json),
@@ -30,7 +63,18 @@ def create_app_layout(initial_df_json, initial_status, initial_kpis, initial_fig
 
 
 def create_header(initial_status):
-    """Tworzy nagłówek aplikacji."""
+    """Tworzy komponent nagłówka aplikacji.
+
+    Nagłówek zawiera tytuł aplikacji, przyciski interaktywne ("Odśwież",
+    "Eksport") oraz pole wyświetlające komunikaty o statusie operacji.
+
+    Args:
+        initial_status (str): Początkowy komunikat, który zostanie
+            wyświetlony w polu statusu przy starcie aplikacji.
+
+    Returns:
+        html.Div: Komponent Div zawierający wszystkie elementy nagłówka.
+    """
     return html.Div([
         html.H1("💓 Dashboard Pomiarów Ciśnienia Krwi"),
         html.Div([
@@ -48,7 +92,21 @@ def create_header(initial_status):
 
 
 def create_summary_tab(initial_kpis):
-    """Tworzy zakładkę podsumowania."""
+    """Tworzy layout dla zakładki "Podsumowanie".
+
+    Zakładka ta zawiera kluczowe wskaźniki wydajności (KPI), tabelę
+    z aktualnymi wytycznymi dotyczącymi ciśnienia oraz wykres kołowy
+    przedstawiający rozkład pomiarów na poszczególne kategorie.
+
+    Args:
+        initial_kpis (tuple): Krotka zawierająca początkowe wartości
+            KPI oraz wykres kołowy, które zostaną wyświetlone
+            przy starcie aplikacji.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     avg_sys, avg_dia, max_reading, norm_percent, fig_pie = initial_kpis
     return dcc.Tab(label='📊 Podsumowanie', children=[
         html.Div([
@@ -82,7 +140,20 @@ def create_summary_tab(initial_kpis):
 
 
 def create_esc_classification_tab(initial_fig_esc_bar):
-    """Tworzy zakładkę klasyfikacji ESC."""
+    """Tworzy layout dla zakładki "Klasyfikacja".
+
+    Zakładka ta prezentuje wykres słupkowy, który pokazuje, ile pomiarów
+    znajduje się w każdej z oficjalnych kategorii ciśnienia, zgodnie
+    z wytycznymi ESC/ESH.
+
+    Args:
+        initial_fig_esc_bar (go.Figure): Początkowy wykres słupkowy,
+            który zostanie wyświetlony przy starcie aplikacji.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     return dcc.Tab(label='🏥 Klasyfikacja', children=[
         html.Div([
             html.H3("📋 Klasyfikacja Pomiarów (wg ESC/ESH)", style={'textAlign': 'center', 'color': '#2c3e50', 'marginTop': '20px'}),
@@ -94,7 +165,21 @@ def create_esc_classification_tab(initial_fig_esc_bar):
 
 
 def create_matrix_tab(initial_fig_matrix):
-    """Tworzy zakładkę macierzy klasyfikacji."""
+    """Tworzy layout dla zakładki "Macierz".
+
+    Głównym elementem tej zakładki jest macierz klasyfikacji - wykres
+    punktowy, na którym pomiary są umieszczone na tle kolorowych stref
+    odpowiadających kategoriom ciśnienia. Zakładka zawiera również
+    dynamicznie generowaną legendę.
+
+    Args:
+        initial_fig_matrix (go.Figure): Początkowy wykres macierzy,
+            który zostanie wyświetlony przy starcie aplikacji.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     legend_items = []
     for category, color in KOLORY_ESC.items():
         legend_items.append(
@@ -119,12 +204,38 @@ def create_matrix_tab(initial_fig_matrix):
 
 
 def create_trend_tab(initial_fig_trend):
-    """Tworzy zakładkę trendu w czasie."""
+    """Tworzy layout dla zakładki "Trend".
+
+    Ta zakładka wyświetla wykres liniowy przedstawiający zmiany ciśnienia
+    i pulsu w czasie, co pozwala na analizę długoterminowych trendów.
+
+    Args:
+        initial_fig_trend (go.Figure): Początkowy wykres trendu,
+            który zostanie wyświetlony przy starcie aplikacji.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     return dcc.Tab(label='📈 Trend', children=[dcc.Graph(id='graph-trend', figure=initial_fig_trend)])
 
 
 def create_circadian_tab(initial_fig_hour):
-    """Tworzy zakładkę rytmu dobowego z przełącznikiem trybu."""
+    """Tworzy layout dla zakładki "Rytm dobowy".
+
+    Zakładka ta jest interaktywna i pozwala na wybór jednego z dwóch
+    trybów analizy rytmu dobowego: statycznego (średnia z całego
+    okresu) lub animowanego (przesuwające się 7-dniowe okno).
+
+    Args:
+        initial_fig_hour (go.Figure): Początkowy, statyczny wykres
+            rytmu dobowego, który zostanie wyświetlony przy starcie
+            aplikacji.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     return dcc.Tab(label='🕒 Rytm dobowy', children=[
         html.Div([
             html.H4("Wybierz tryb analizy", style={'textAlign': 'center', 'marginTop': '20px'}),
@@ -171,17 +282,57 @@ def create_circadian_tab(initial_fig_hour):
 
 
 def create_correlation_tab(initial_fig_scatter):
-    """Tworzy zakładkę korelacji."""
+    """Tworzy layout dla zakładki "Korelacje".
+
+    Zakładka ta wyświetla wykres punktowy zależności między ciśnieniem
+    skurczowym (SYS) a rozkurczowym (DIA), z kolorem punktów
+    reprezentującym puls.
+
+    Args:
+        initial_fig_scatter (go.Figure): Początkowy wykres korelacji,
+            który zostanie wyświetlony przy starcie aplikacji.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     return dcc.Tab(label='❤️ Korelacje', children=[dcc.Graph(id='graph-scatter', figure=initial_fig_scatter)])
 
 
 def create_heatmap_tab(initial_fig_heatmap):
-    """Tworzy zakładkę heatmapy."""
+    """Tworzy layout dla zakładki "Heatmapa".
+
+    Zakładka ta prezentuje heatmapę (mapę cieplną) średnich wartości
+    ciśnienia skurczowego w zależności od dnia i godziny, co ułatwia
+    identyfikację wzorców czasowych.
+
+    Args:
+        initial_fig_heatmap (go.Figure): Początkowy wykres heatmapy,
+            który zostanie wyświetlony przy starcie aplikacji.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     return dcc.Tab(label='🌡️ Heatmapa', children=[dcc.Graph(id='graph-heatmap', figure=initial_fig_heatmap)])
 
 
 def create_hemodynamics_tab(initial_fig_hemodynamics):
-    """Tworzy zakładkę analizy hemodynamicznej."""
+    """Tworzy layout dla zakładki "Analiza Hemodynamiczna".
+
+    Zakładka ta zawiera wykres trendu dla kluczowych wskaźników
+    hemodynamicznych: ciśnienia tętna (PP) i średniego ciśnienia
+    tętniczego (MAP). Zawiera również opisy tych wskaźników.
+
+    Args:
+        initial_fig_hemodynamics (go.Figure): Początkowy wykres
+            analizy hemodynamicznej, który zostanie wyświetlony
+            przy starcie aplikacji.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     return dcc.Tab(label='🔬 Analiza Hemodynamiczna', children=[html.Div([
             html.H4("Analiza Zależności Hemodynamicznych", style={'textAlign': 'center', 'marginTop': '20px', 'color': '#2c3e50'}),
             html.P(["Wykres pokazuje trend ", html.Strong("Ciśnienia Tętna (PP)"), " oraz ", html.Strong("Średniego Ciśnienia Tętniczego (MAP)"), " w czasie."], style={'textAlign': 'center', 'color': '#666', 'marginBottom': '20px'}),
@@ -195,7 +346,21 @@ def create_hemodynamics_tab(initial_fig_hemodynamics):
 
 
 def create_comparison_tab(df):
-    """Tworzy zakładkę porównań."""
+    """Tworzy layout dla zakładki "Porównanie".
+
+    Zakładka ta jest interaktywna - zawiera przyciski radiowe, które
+    pozwalają użytkownikowi wybrać, według jakiej kategorii chce
+    porównać rozkłady ciśnienia (np. według godzin pomiarów lub
+    typu dnia). Wyświetla wykres skrzypcowy.
+
+    Args:
+        df (pd.DataFrame): Ramka danych z początkowymi danymi,
+            potrzebna do wygenerowania pierwszego widoku wykresu.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     initial_fig_comparison = generate_comparison_chart(df, 'Godzina Pomiaru', 'violin')
     return dcc.Tab(label='⚖️ Porównanie', children=[html.Div([
             html.H5("Wybierz tryb porównania:", style={'textAlign': 'center', 'marginTop': '20px'}),
@@ -206,7 +371,21 @@ def create_comparison_tab(df):
 
 
 def create_histogram_tab(initial_fig_histogram):
-    """Tworzy zakładkę rozkładu danych."""
+    """Tworzy layout dla zakładki "Rozkład".
+
+    Zakładka jest interaktywna, pozwalając użytkownikowi wybrać,
+    dla którego parametru (SYS, DIA, czy PUL) ma być wyświetlony
+    histogram rozkładu wartości.
+
+    Args:
+        initial_fig_histogram (go.Figure): Początkowy wykres
+            histogramu (domyślnie dla SYS), który zostanie
+            wyświetlony przy starcie aplikacji.
+
+    Returns:
+        dcc.Tab: Obiekt zakładki gotowy do umieszczenia w kontenerze
+            `dcc.Tabs`.
+    """
     return dcc.Tab(label='📊 Rozkład', children=[html.Div([
             html.H4("Wybierz parametr do analizy:", style={'textAlign': 'center', 'marginTop': '20px'}),
             dcc.RadioItems(id='histogram-radio', options=[{'label': 'Ciśnienie Skurczowe (SYS)', 'value': 'SYS'}, {'label': 'Ciśnienie Rozkurczowe (DIA)', 'value': 'DIA'}, {'label': 'Tętno (PUL)', 'value': 'PUL'}], value='SYS', labelStyle={'display': 'inline-block', 'marginRight': '20px'}, style={'textAlign': 'center'}),

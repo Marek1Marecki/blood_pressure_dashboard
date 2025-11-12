@@ -1,7 +1,10 @@
-"""
-Moduł przetwarzania danych
-Zawiera funkcje wczytywania i przetwarzania pomiarów ciśnienia
-z wykorzystaniem wektoryzacji i inteligentnego cache'u w folderze tymczasowym.
+"""Moduł odpowiedzialny za wczytywanie i przetwarzanie danych pomiarowych.
+
+Zawiera funkcje do:
+- Wczytywania danych z pliku Excel z inteligentnym wykorzystaniem pamięci podręcznej (cache).
+- Klasyfikacji pomiarów ciśnienia krwi zgodnie z najnowszymi wytycznymi ESC/ESH.
+- Wzbogacania danych o dodatkowe kolumny, takie jak MAP (średnie ciśnienie tętnicze)
+  i PP (ciśnienie tętna).
 """
 import os
 import pandas as pd
@@ -17,22 +20,21 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 
 def klasyfikuj_cisnienie_esc_wektorowo(df):
-    """
-    Klasyfikuje pomiar ciśnienia wektorowo za pomocą np.select.
+    """Klasyfikuje pomiary ciśnienia krwi do odpowiednich kategorii.
 
-    KLUCZOWA ZASADA KLINICZNA:
-    ==========================
-    ISH (Izolowane Nadciśnienie Skurczowe) = SYS ≥ 140 AND DIA < 90
+    Wykorzystuje zoptymalizowaną metodę wektorową `np.select` do szybkiej
+    klasyfikacji. Implementuje logikę zgodną z najnowszymi wytycznymi
+    Europejskiego Towarzystwa Kardiologicznego (ESC/ESH), uwzględniając
+    zasadę priorytetu dla Izolowanego Nadciśnienia Skurczowego (ISH).
 
-    ISH ma NAJWYŻSZY PRIORYTET i jest sprawdzane JAKO PIERWSZE!
+    Args:
+        df (pd.DataFrame): Ramka danych zawierająca kolumny 'SYS' (ciśnienie
+            skurczowe) i 'DIA' (ciśnienie rozkurczowe).
 
-    PRZYKŁADY:
-    ==========
-    SYS=142, DIA=72  → ISH ✓ (140 ≤ SYS, DIA < 90)
-    SYS=154, DIA=84  → ISH ✓ (140 ≤ SYS, DIA < 90)
-    SYS=185, DIA=85  → ISH ✓ (140 ≤ SYS, DIA < 90, mimo że SYS ≥ 180!)
-    SYS=154, DIA=95  → N1 ✓  (DIA ≥ 90, więc nie ISH)
-    SYS=185, DIA=95  → N3 ✓  (DIA ≥ 90, więc nie ISH)
+    Returns:
+        pd.DataFrame: Oryginalna ramka danych wzbogacona o nową kolumnę
+        'Kategoria', która zawiera tekstową nazwę kategorii ciśnienia
+        dla każdego pomiaru.
     """
 
     p = PROGI_ESC
@@ -168,12 +170,28 @@ def klasyfikuj_cisnienie_esc_wektorowo(df):
 
 
 def wczytaj_i_przetworz_dane(sciezka_folderu_projektu):
-    """
-    Wczytuje i przetwarza dane, wykorzystując inteligentny cache w folderze tymczasowym.
-    1. Sprawdza, czy istnieje plik cache (.feather).
-    2. Porównuje daty modyfikacji .xlsx i .feather.
-    3. Jeśli .xlsx jest nowszy, wczytuje go, tworzy nowy cache i zwraca dane.
-    4. W przeciwnym razie, błyskawicznie wczytuje dane z cache.
+    """Wczytuje i przetwarza dane pomiarowe z pliku Excel.
+
+    Funkcja implementuje mechanizm pamięci podręcznej (cache) w formacie
+    Feather, aby znacząco przyspieszyć wczytywanie danych przy kolejnych
+    uruchomieniach aplikacji. Cache jest automatycznie odświeżany,
+    gdy plik Excel zostanie zmodyfikowany.
+
+    Proces przetwarzania obejmuje:
+    - Konwersję kolumn daty i godziny do formatu datetime.
+    - Usunięcie wierszy z brakującymi danymi.
+    - Obliczenie dodatkowych wskaźników (MAP, PP).
+    - Klasyfikację każdego pomiaru do odpowiedniej kategorii ciśnienia.
+
+    Args:
+        sciezka_folderu_projektu (str): Ścieżka do głównego folderu
+            projektu, w którym znajduje się plik Excel z danymi.
+
+    Returns:
+        tuple[pd.DataFrame, str]: Krotka zawierająca:
+            - ramkę danych (pd.DataFrame) z przetworzonymi pomiarami,
+            - komunikat (str) informujący o statusie operacji
+              (np. o sukcesie, błędzie lub źródle wczytania danych).
     """
     sciezka_excel = os.path.join(sciezka_folderu_projektu, NAZWA_PLIKU_EXCEL)
     sciezka_feather = os.path.join(CACHE_DIR, NAZWA_PLIKU_FEATHER)

@@ -1,7 +1,15 @@
 
-"""
-=== charts/summary.py ===
-Dane podsumowujące (KPI + wykres kołowy)
+"""Moduł odpowiedzialny za generowanie danych podsumowujących.
+
+Ten moduł dostarcza funkcję, która oblicza kluczowe wskaźniki wydajności
+(KPI) oraz generuje wykres kołowy przedstawiający procentowy udział
+poszczególnych kategorii ciśnienia.
+
+Obliczane wskaźniki (KPI) to:
+- Średnie ciśnienie skurczowe (SYS).
+- Średnie ciśnienie rozkurczowe (DIA).
+- Najwyższy odnotowany pomiar.
+- Procentowy udział pomiarów mieszczących się w normie.
 """
 
 import pandas as pd
@@ -11,7 +19,33 @@ from config import KOLORY_ESC, KOLEJNOSC_ESC, TEMPLATE_PLOTLY
 
 
 def generate_summary_data(df):
-    """Generuje dane podsumowujące (KPI + wykres kołowy)."""
+    """Oblicza kluczowe wskaźniki (KPI) i generuje wykres kołowy kategorii.
+
+    Funkcja przetwarza ramkę danych w celu wygenerowania podsumowania,
+    które składa się z dwóch części:
+    1.  **Kluczowe Wskaźniki Wydajności (KPI)**:
+        - Średnie ciśnienie skurczowe (SYS).
+        - Średnie ciśnienie rozkurczowe (DIA).
+        - Najwyższy odnotowany pomiar ciśnienia.
+        - Procent pomiarów w normie ("Optymalne" i "Prawidłowe").
+    2.  **Wykres Kołowy**: Wizualizacja procentowego udziału każdej
+        kategorii ciśnienia we wszystkich pomiarach.
+
+    Args:
+        df (pd.DataFrame): Ramka danych zawierająca przetworzone pomiary,
+            w tym kolumny 'SYS', 'DIA' i 'Kategoria'.
+
+    Returns:
+        tuple: Krotka zawierająca pięć elementów:
+            - `avg_sys` (str): Sformatowana średnia wartość SYS.
+            - `avg_dia` (str): Sformatowana średnia wartość DIA.
+            - `max_reading_text` (str): Sformatowany najwyższy pomiar.
+            - `norm_percent_text` (str): Sformatowany procent pomiarów
+              w normie.
+            - `fig_pie` (go.Figure): Obiekt wykresu kołowego Plotly.
+            W przypadku błędu lub braku danych, zwraca odpowiednie
+            wartości zastępcze.
+    """
     if df.empty:
         return "B/D", "B/D", "B/D", "B/D", utworz_pusty_wykres()
 

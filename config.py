@@ -1,6 +1,16 @@
-"""
-Konfiguracja aplikacji Dashboard Ciśnienia Krwi
-Zawiera wszystkie stałe, progi i kolory używane w aplikacji
+"""Moduł konfiguracyjny aplikacji.
+
+Ten plik centralizuje wszystkie stałe, progi, palety kolorów i inne
+parametry konfiguracyjne używane w różnych częściach aplikacji.
+Dzięki temu, zmiana np. progu dla danej kategorii ciśnienia czy koloru
+wykresu wymaga modyfikacji tylko w jednym miejscu.
+
+Zawiera konfiguracje dla:
+-   Nazw plików wejściowych i cache.
+-   Standardowych godzin pomiarów.
+-   Progów klasyfikacji ciśnienia zgodnie z wytycznymi ESC/ESH.
+-   Palet kolorów dla kategorii ciśnienia i parametrów medycznych.
+-   Domyślnych ustawień wizualnych dla wykresów Plotly.
 """
 
 # =============================================================================

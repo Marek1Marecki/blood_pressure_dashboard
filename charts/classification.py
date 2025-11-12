@@ -1,5 +1,14 @@
-"""
-Wykresy klasyfikacji ciśnienia wg aktualnych wytycznych klinicznych
+"""Moduł odpowiedzialny za generowanie wykresów klasyfikacyjnych.
+
+Ten moduł dostarcza funkcje do tworzenia dwóch kluczowych wizualizacji
+związanych z klasyfikacją pomiarów ciśnienia krwi:
+
+1.  **Macierz Klasyfikacji**: Wykres punktowy (scatter plot), gdzie każdy
+    pomiar jest umieszczony na tle siatki kategorii ciśnienia (np.
+    optymalne, prawidłowe, nadciśnienie), co pozwala na wizualną ocenę,
+    do której kategorii wpada dany pomiar.
+2.  **Wykres Słupkowy Kategorii**: Wykres pokazujący liczbę i procentowy
+    udział pomiarów w każdej zdefiniowanej kategorii ciśnienia.
 """
 import pandas as pd
 import plotly.express as px
@@ -11,9 +20,22 @@ from config import (
 )
 
 def generate_classification_matrix_chart(df):
-    """
-    Generuje macierz klasyfikacji pomiarów ciśnienia wg aktualnych wytycznych.
-    Wersja ostateczna - definiuje każdy prostokąt siatki osobno, bez nakładania.
+    """Generuje macierz klasyfikacji, wizualizując pomiary na tle kategorii.
+
+    Tworzy wykres punktowy, gdzie oś X reprezentuje ciśnienie rozkurczowe
+    (DIA), a oś Y ciśnienie skurczowe (SYS). Każdy punkt na wykresie
+    odpowiada jednemu pomiarowi. Tło wykresu jest pokolorowane zgodnie
+    z siatką kategorii ciśnienia (np. "Optymalne", "Nadciśnienie 1°"),
+    co pozwala na natychmiastową wizualną identyfikację, do której
+    kategorii należy dany pomiar.
+
+    Args:
+        df (pd.DataFrame): Ramka danych zawierająca przetworzone pomiary,
+            w tym kolumny 'SYS' i 'DIA'.
+
+    Returns:
+        go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
+            błędu, zwraca pusty wykres z komunikatem.
     """
     if df.empty:
         return utworz_pusty_wykres()
@@ -108,8 +130,22 @@ def generate_classification_matrix_chart(df):
         return utworz_pusty_wykres(f"Błąd podczas generowania macierzy: {e}")
 
 def generate_esc_category_bar_chart(df):
-    """
-    Generuje wykres słupkowy liczebności kategorii wg aktualnych wytycznych.
+    """Generuje wykres słupkowy pokazujący rozkład pomiarów w kategoriach.
+
+    Funkcja zlicza, ile pomiarów wpada do każdej z predefiniowanych
+    kategorii ciśnienia (zgodnie z kolumną 'Kategoria' w ramce danych).
+    Następnie tworzy wykres słupkowy, gdzie każdy słupek odpowiada jednej
+    kategorii, a jego wysokość reprezentuje liczbę pomiarów. Dodatkowo,
+    na słupkach wyświetlane są etykiety z dokładną liczbą i udziałem
+    procentowym.
+
+    Args:
+        df (pd.DataFrame): Ramka danych zawierająca przetworzone pomiary,
+            w tym kolumnę 'Kategoria'.
+
+    Returns:
+        go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
+            błędu, zwraca pusty wykres z komunikatem.
     """
     if df.empty:
         return utworz_pusty_wykres()

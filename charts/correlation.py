@@ -1,6 +1,13 @@
-"""
-=== charts/correlation.py ===
-Wykres korelacji SYS-DIA
+"""Moduł odpowiedzialny za generowanie wykresu korelacji.
+
+Ten moduł dostarcza funkcję do tworzenia wykresu punktowego (scatter plot),
+który wizualizuje zależność między ciśnieniem skurczowym (SYS)
+a rozkurczowym (DIA). Dodatkowo, kolor punktów reprezentuje wartość
+pulsu (PUL), co pozwala na analizę trójwymiarowej relacji.
+
+Wykres zawiera również linię regresji liniowej wraz ze współczynnikiem
+korelacji (r) i wartością p, co umożliwia statystyczną ocenę siły
+i istotności tej zależności.
 """
 
 import numpy as np
@@ -12,7 +19,26 @@ from config import TEMPLATE_PLOTLY
 
 
 def generate_correlation_chart(df):
-    """Generuje wykres korelacji SYS-DIA z uwzględnieniem pulsu."""
+    """Generuje wykres korelacji między ciśnieniem skurczowym a rozkurczowym.
+
+    Tworzy wykres punktowy, gdzie każdy punkt reprezentuje jeden pomiar,
+    z ciśnieniem rozkurczowym (DIA) na osi X i skurczowym (SYS) na osi Y.
+    Kolor punktów jest mapowany na wartość pulsu (PUL), co pozwala na
+    dodatkową analizę.
+
+    Dodatkowo, na wykresie umieszczana jest linia regresji liniowej,
+    która wizualizuje trend w danych. W legendzie wyświetlane są kluczowe
+    statystyki tej regresji, takie jak współczynnik korelacji (r)
+    i wartość p.
+
+    Args:
+        df (pd.DataFrame): Ramka danych zawierająca przetworzone pomiary,
+            w tym kolumny 'SYS', 'DIA' i 'PUL'.
+
+    Returns:
+        go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
+            błędu, zwraca pusty wykres z komunikatem.
+    """
     if df.empty:
         return utworz_pusty_wykres()
 

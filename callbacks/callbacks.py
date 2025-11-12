@@ -1,5 +1,15 @@
-"""
-Definicje wszystkich callbacków aplikacji (ZOPTYMALIZOWANE)
+"""Moduł odpowiedzialny za rejestrację i definicję wszystkich callbacków.
+
+Ten plik centralizuje logikę interaktywności aplikacji Dash.
+Callbacki to funkcje, które są automatycznie wywoływane przez Dash
+w odpowiedzi na interakcje użytkownika, takie jak kliknięcie przycisku,
+wybór opcji z menu, czy zmiana wartości na suwaku.
+
+Główne zadania tego modułu to:
+- Aktualizacja danych w aplikacji po kliknięciu przycisku "Odśwież".
+- Dynamiczne odświeżanie wszystkich wykresów, gdy dane ulegną zmianie.
+- Obsługa interaktywnych komponentów, np. przełączników w zakładkach.
+- Realizacja eksportu danych i wykresów do pliku HTML.
 """
 
 import os
@@ -25,11 +35,20 @@ from charts import (
 
 
 def register_callbacks(app, project_root_path):
-    """
-    Rejestruje wszystkie callbacki aplikacji.
+    """Rejestruje wszystkie callbacki aplikacji Dash.
+
+    Ta funkcja jest centralnym punktem, w którym wszystkie dynamiczne
+    interakcje aplikacji są definiowane i przypisywane do layoutu.
+    Zawiera ona zagnieżdżone definicje funkcji callbacków, co jest
+    praktyką pozwalającą na hermetyzację logiki i zachowanie czystości
+    globalnej przestrzeni nazw.
 
     Args:
-        app: Instancja aplikacji Dash
+        app (dash.Dash): Główna instancja aplikacji Dash, do której
+            callbacki zostaną zarejestrowane.
+        project_root_path (str): Ścieżka do głównego folderu projektu,
+            konieczna do prawidłowego lokalizowania pliku z danymi
+            podczas operacji odświeżania.
     """
 
     # =========================================================================
@@ -42,7 +61,23 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← KLUCZOWE: Nie uruchamiaj przy starcie
     )
     def refresh_data(n_clicks):
-        """Odświeża dane z pliku Excel."""
+        """Callback odświeżający dane po kliknięciu przycisku.
+
+        Ta funkcja jest wywoływana po kliknięciu przycisku "Odśwież dane".
+        Jej zadaniem jest ponowne wczytanie i przetworzenie danych
+        z pliku Excel, a następnie zaktualizowanie centralnego magazynu
+        danych (`dcc.Store`) oraz komunikatu o statusie.
+
+        Args:
+            n_clicks (int): Liczba kliknięć przycisku. Parametr ten jest
+                potrzebny do wyzwolenia callbacku, ale jego wartość
+                nie jest używana.
+
+        Returns:
+            tuple[str, str]: Krotka zawierająca:
+                - zaktualizowane dane w formacie JSON,
+                - nowy komunikat o statusie operacji.
+        """
         df, status = wczytaj_i_przetworz_dane(project_root_path)
         return df.to_json(date_format='iso', orient='split'), status
 
@@ -60,7 +95,21 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykresy już są w initial_figures
     )
     def update_summary(stored_data):
-        """Aktualizuje zakładkę podsumowania (KPI + wykres kołowy)."""
+        """Callback aktualizujący zakładkę podsumowania.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Pobiera zaktualizowane dane, przelicza kluczowe wskaźniki (KPI)
+        oraz generuje nowy wykres kołowy, a następnie odświeża
+        odpowiednie komponenty w zakładce "Podsumowanie".
+
+        Args:
+            stored_data (str): Dane w formacie JSON pochodzące
+                z `dcc.Store`.
+
+        Returns:
+            tuple: Krotka zawierająca zaktualizowane wartości dla KPI
+                oraz nowy obiekt `go.Figure` dla wykresu kołowego.
+        """
         if stored_data is None:
             return "B/D", "B/D", "B/D", "B/D", {}
 
@@ -77,7 +126,19 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_esc_bar(stored_data):
-        """Aktualizuje wykres słupkowy klasyfikacji ESC."""
+        """Callback aktualizujący wykres słupkowy klasyfikacji ESC.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Generuje na nowo wykres słupkowy i aktualizuje komponent
+        `dcc.Graph` w zakładce "Klasyfikacja".
+
+        Args:
+            stored_data (str): Dane w formacie JSON pochodzące
+                z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
 
@@ -94,7 +155,19 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_matrix(stored_data):
-        """Aktualizuje macierz klasyfikacji."""
+        """Callback aktualizujący macierz klasyfikacji.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Generuje na nowo macierz klasyfikacji i aktualizuje komponent
+        `dcc.Graph` w zakładce "Macierz".
+
+        Args:
+            stored_data (str): Dane w formacie JSON pochodzące
+                z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
 
@@ -111,7 +184,19 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_trend(stored_data):
-        """Aktualizuje wykres trendu w czasie."""
+        """Callback aktualizujący wykres trendu w czasie.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Generuje na nowo wykres trendu i aktualizuje komponent
+        `dcc.Graph` w zakładce "Trend".
+
+        Args:
+            stored_data (str): Dane w formacie JSON pochodzące
+                z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
 
@@ -128,7 +213,19 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_circadian(stored_data):
-        """Aktualizuje wykres rytmu dobowego."""
+        """Callback aktualizujący wykres rytmu dobowego.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Generuje na nowo wykres rytmu dobowego i aktualizuje komponent
+        `dcc.Graph` w zakładce "Rytm dobowy".
+
+        Args:
+            stored_data (str): Dane w formacie JSON pochodzące
+                z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
 
@@ -145,7 +242,19 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_correlation(stored_data):
-        """Aktualizuje wykres korelacji SYS-DIA-PUL."""
+        """Callback aktualizujący wykres korelacji.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Generuje na nowo wykres korelacji i aktualizuje komponent
+        `dcc.Graph` w zakładce "Korelacje".
+
+        Args:
+            stored_data (str): Dane w formacie JSON pochodzące
+                z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
 
@@ -162,7 +271,19 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_heatmap(stored_data):
-        """Aktualizuje heatmapę ciśnienia."""
+        """Callback aktualizujący heatmapę.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Generuje na nowo heatmapę i aktualizuje komponent
+        `dcc.Graph` w zakładce "Heatmapa".
+
+        Args:
+            stored_data (str): Dane w formacie JSON pochodzące
+                z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
 
@@ -179,7 +300,19 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_hemodynamics(stored_data):
-        """Aktualizuje wykres analizy hemodynamicznej."""
+        """Callback aktualizujący wykres analizy hemodynamicznej.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Generuje na nowo wykres hemodynamiczny i aktualizuje komponent
+        `dcc.Graph` w zakładce "Analiza Hemodynamiczna".
+
+        Args:
+            stored_data (str): Dane w formacie JSON pochodzące
+                z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
 
@@ -197,7 +330,21 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres generowany w layouts/tabs.py
     )
     def update_comparison(category, stored_data):
-        """Aktualizuje wykres porównawczy (tylko violin)."""
+        """Callback aktualizujący wykres porównawczy.
+
+        Wywoływany, gdy zmianie ulegną dane w `dcc.Store` lub gdy
+        użytkownik wybierze inną kategorię porównania za pomocą
+        przycisków radiowych. Generuje na nowo wykres porównawczy
+        (skrzypcowy) i aktualizuje odpowiedni komponent `dcc.Graph`.
+
+        Args:
+            category (str): Wybrana kategoria do porównania
+                (np. 'Godzina Pomiaru' lub 'Typ Dnia').
+            stored_data (str): Dane w formacie JSON z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
 
@@ -215,7 +362,21 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_histogram(column, stored_data):
-        """Aktualizuje histogram rozkładu parametru."""
+        """Callback aktualizujący histogram.
+
+        Wywoływany, gdy zmianie ulegną dane w `dcc.Store` lub gdy
+        użytkownik wybierze inny parametr do analizy za pomocą
+        przycisków radiowych. Generuje na nowo histogram i aktualizuje
+        odpowiedni komponent `dcc.Graph`.
+
+        Args:
+            column (str): Wybrany parametr do wizualizacji
+                (np. 'SYS', 'DIA', 'PUL').
+            stored_data (str): Dane w formacie JSON z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
 
@@ -233,7 +394,24 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True
     )
     def export_html(n_clicks, stored_data):
-        """Eksportuje wszystkie wykresy do pliku HTML."""
+        """Callback eksportujący wszystkie wykresy do pliku HTML.
+
+        Wywoływany po kliknięciu przycisku "Eksport HTML".
+        Funkcja ta generuje wszystkie zdefiniowane w konfiguracji wykresy,
+        a następnie osadza je w jednym, samodzielnym pliku HTML.
+        Plik ten zawiera również podstawowe informacje podsumowujące
+        oraz tabelę z wytycznymi ciśnienia.
+
+        Args:
+            n_clicks (int): Liczba kliknięć przycisku. Parametr ten jest
+                potrzebny do wyzwolenia callbacku, ale jego wartość
+                nie jest używana.
+            stored_data (str): Dane w formacie JSON z `dcc.Store`.
+
+        Returns:
+            str: Komunikat informujący o sukcesie lub błędzie operacji
+                eksportu, który jest wyświetlany w komponencie statusu.
+        """
         if stored_data is None or n_clicks is None:
             return "❌ Brak danych do wyeksportowania"
 
@@ -462,6 +640,19 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_static_circadian_chart(stored_data):
+        """Callback aktualizujący statyczny wykres rytmu dobowego.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Zapewnia, że statyczna wersja wykresu rytmu dobowego jest
+        zawsze aktualna w tle, nawet gdy użytkownik ma włączony
+        widok animowany.
+
+        Args:
+            stored_data (str): Dane w formacie JSON z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly.
+        """
         if stored_data is None:
             return {}
         df = pd.read_json(StringIO(stored_data), orient='split')
@@ -477,7 +668,20 @@ def register_callbacks(app, project_root_path):
         Input('circadian-mode-radio', 'value')
     )
     def toggle_circadian_view(mode):
-        """Pokazuje/ukrywa kontenery w zależności od wybranego trybu."""
+        """Callback przełączający widok między statycznym a animowanym.
+
+        Zmienia styl `display` kontenerów w zakładce "Rytm dobowy",
+        aby pokazać wybrany przez użytkownika tryb (statyczny lub
+        animowany) i ukryć drugi.
+
+        Args:
+            mode (str): Wartość wybrana w `dcc.RadioItems`
+                ('static' lub 'animated').
+
+        Returns:
+            tuple[dict, dict]: Dwa słowniki stylów CSS, jeden dla
+                kontenera statycznego, drugi dla animowanego.
+        """
         if mode == 'animated':
             return {'display': 'none'}, {'display': 'block'}
         else:
@@ -490,7 +694,21 @@ def register_callbacks(app, project_root_path):
         prevent_initial_call=True  # ← Dane już są w initial_df_json
     )
     def update_day_slider_options(stored_data):
-        """Aktualizuje opcje suwaka na podstawie unikalnych dni w danych."""
+        """Callback aktualizujący opcje suwaka animacji.
+
+        Wywoływany, gdy dane w `dcc.Store` ulegną zmianie.
+        Oblicza dostępny zakres dat dla animacji (wymagane jest
+        minimum 7 dni danych) i konfiguruje maksymalną wartość
+        oraz etykiety suwaka.
+
+        Args:
+            stored_data (str): Dane w formacie JSON z `dcc.Store`.
+
+        Returns:
+            tuple[int, dict]: Krotka zawierająca:
+                - maksymalną wartość dla suwaka,
+                - słownik etykiet dla suwaka.
+        """
         if stored_data is None:
             return 0, {0: 'Brak danych'}
 
@@ -516,7 +734,20 @@ def register_callbacks(app, project_root_path):
         State('data-store', 'data')
     )
     def update_animated_chart_on_slide(slider_value, stored_data):
-        """Aktualizuje animowany wykres, gdy suwak jest przesuwany."""
+        """Callback aktualizujący animowany wykres rytmu dobowego.
+
+        Wywoływany, gdy wartość suwaka animacji ulegnie zmianie.
+        Określa 7-dniowe okno danych na podstawie aktualnej pozycji
+        suwaka i generuje dla niego wykres rytmu dobowego.
+
+        Args:
+            slider_value (int): Aktualna wartość suwaka.
+            stored_data (str): Dane w formacie JSON z `dcc.Store`.
+
+        Returns:
+            go.Figure: Nowy obiekt wykresu Plotly dla wybranego okna
+                czasowego.
+        """
         if stored_data is None:
             return {}
 
@@ -544,6 +775,19 @@ def register_callbacks(app, project_root_path):
         Input('pause-button', 'n_clicks'),
     )
     def toggle_animation_interval(play_clicks, pause_clicks):
+        """Callback włączający/wyłączający interwał animacji.
+
+        Zarządza stanem komponentu `dcc.Interval` na podstawie
+        interakcji z przyciskami "Play" i "Pause".
+
+        Args:
+            play_clicks (int): Liczba kliknięć przycisku "Play".
+            pause_clicks (int): Liczba kliknięć przycisku "Pause".
+
+        Returns:
+            bool: `True`, aby wyłączyć interwał (pauza),
+                  `False`, aby go włączyć (odtwarzanie).
+        """
         from dash import ctx
         if not ctx.triggered_id: return True
         return ctx.triggered_id == 'pause-button'
@@ -555,6 +799,20 @@ def register_callbacks(app, project_root_path):
         State('day-slider', 'max'),
     )
     def advance_slider(n_intervals, current_value, max_value):
+        """Callback automatycznie przesuwający suwak animacji.
+
+        Wywoływany cyklicznie przez aktywny `dcc.Interval`.
+        Inkrementuje wartość suwaka, a po dojściu do końca
+        resetuje go do początku, tworząc pętlę animacji.
+
+        Args:
+            n_intervals (int): Liczba wywołań interwału.
+            current_value (int): Aktualna pozycja suwaka.
+            max_value (int): Maksymalna wartość suwaka.
+
+        Returns:
+            int: Nowa wartość suwaka.
+        """
         if n_intervals == 0 or current_value is None: return no_update
         new_value = current_value + 1
         return 0 if new_value > max_value else new_value

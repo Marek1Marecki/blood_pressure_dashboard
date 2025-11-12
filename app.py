@@ -1,43 +1,20 @@
-"""
-Dashboard Pomiarów Ciśnienia Krwi - Aplikacja główna (PEŁNA MODULARYZACJA)
-===========================================================================
+"""Główny plik aplikacji do analizy pomiarów ciśnienia krwi.
 
-STRUKTURA PROJEKTU:
--------------------
-blood_pressure_dashboard/
-├── app.py                      # <- TEN PLIK (tylko inicjalizacja i uruchomienie)
-├── config.py                   # Konfiguracja i stałe
-├── data_processing.py          # Wczytywanie i przetwarzanie danych
-├── charts/                     # Moduł wykresów
-│   ├── __init__.py
-│   ├── utils.py
-│   ├── trend.py
-│   ├── circadian.py
-│   ├── correlation.py
-│   ├── heatmap.py
-│   ├── histogram.py
-│   ├── classification.py
-│   ├── comparison.py
-│   └── summary.py
-├── layouts/                    # Moduł layoutów
-│   ├── __init__.py
-│   └── tabs.py                # Definicje wszystkich zakładek
-└── callbacks/                  # Moduł callbacków
-    ├── __init__.py
-    └── callbacks.py           # Wszystkie callbacki
+Ten plik pełni rolę punktu startowego aplikacji. Jego główne zadania to:
+- Inicjalizacja aplikacji Dash.
+- Wczytanie i przetworzenie danych przy użyciu modułu `data_processing`.
+- Wygenerowanie początkowych wersji wykresów za pomocą modułu `charts`.
+- Zbudowanie kompletnego layoutu aplikacji z modułu `layouts`.
+- Zarejestrowanie wszystkich interaktywnych callbacków z modułu `callbacks`.
+- Uruchomienie serwera deweloperskiego Dash.
 
-JAK DODAĆ NOWĄ ZAKŁADKĘ:
-------------------------
-1. Utwórz plik wykresu w charts/ (np. charts/nowy_wykres.py)
-2. Dodaj import w charts/__init__.py
-3. Wygeneruj wykres początkowy w sekcji INICJALIZACJA (poniżej)
-4. Dodaj zakładkę w layouts/tabs.py (funkcja create_nowy_tab())
-5. Dodaj callback w callbacks/callbacks.py
-6. Opcjonalnie: Dodaj do eksportu HTML w callbacks/callbacks.py
+Aplikacja została zaprojektowana w architekturze modularnej, co oznacza,
+że główna logika została podzielona na wyspecjalizowane moduły (dane,
+wykresy, layout, callbacki). Dzięki temu `app.py` pozostaje zwięzły
+i czytelny, a rozwijanie i utrzymanie aplikacji jest znacznie łatwiejsze.
 
-URUCHOMIENIE:
--------------
-python app.py
+Aby uruchomić aplikację, należy wykonać polecenie w terminalu:
+    python app.py
 """
 
 import os

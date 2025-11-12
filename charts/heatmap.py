@@ -1,8 +1,14 @@
 
 
-"""
-=== charts/heatmap.py ===
-Heatmapa ciśnienia
+"""Moduł odpowiedzialny za generowanie heatmapy ciśnienia.
+
+Ten moduł dostarcza funkcję do tworzenia heatmapy (mapy cieplnej),
+która wizualizuje średnie wartości ciśnienia skurczowego (SYS)
+w zależności od dnia i godziny pomiaru.
+
+Heatmapa pozwala na szybką identyfikację wzorców i trendów,
+np. dni tygodnia lub pór dnia, w których ciśnienie jest systematycznie
+wyższe lub niższe.
 """
 
 import plotly.express as px
@@ -11,7 +17,25 @@ from config import TEMPLATE_PLOTLY
 
 
 def generate_heatmap_chart(df):
-    """Generuje heatmapę ciśnienia skurczowego."""
+    """Generuje heatmapę średniego ciśnienia skurczowego (SYS).
+
+    Funkcja tworzy tabelę przestawną, gdzie wiersze odpowiadają dniom,
+    a kolumny godzinom pomiarów. Wartości w komórkach tabeli to średnie
+    ciśnienie skurczowe (SYS) dla danego dnia i godziny.
+
+    Następnie, na podstawie tej tabeli, generowana jest heatmapa,
+    gdzie kolor każdej komórki odpowiada wartości średniego ciśnienia,
+    co pozwala na łatwą wizualną analizę.
+
+    Args:
+        df (pd.DataFrame): Ramka danych zawierająca przetworzone pomiary,
+            w tym kolumny 'Dzień', 'Hour' i 'SYS'.
+
+    Returns:
+        go.Figure: Obiekt wykresu Plotly. W przypadku niewystarczającej
+            ilości danych do stworzenia tabeli przestawnej lub błędu,
+            zwraca pusty wykres z komunikatem.
+    """
     if df.empty:
         return utworz_pusty_wykres()
 
