@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from .utils import utworz_pusty_wykres
 from config import (
     PROGI_ESC, KOLORY_ESC, KOLEJNOSC_ESC,
-    TEMPLATE_PLOTLY, WYSOKOSC_WYKRESU_DUZY, WYSOKOSC_WYKRESU_MALY
+    TEMPLATE_PLOTLY, WYSOKOSC_WYKRESU_DUZY
 )
 
 def generate_classification_matrix_chart(df):
@@ -22,47 +22,34 @@ def generate_classification_matrix_chart(df):
         fig = go.Figure()
 
         min_dia, max_dia = 40, 120
-        min_sys, max_sys = 60, 220
+        min_sys, max_sys = 60, 200
 
         p = PROGI_ESC # Skrót dla czytelności
 
         strefy = [
-            # --- SEKCJA 1: Strefy "normalne" (DIA < 90, SYS < 140) ---
             # 1. Optymalne
             {'x0': min_dia, 'y0': min_sys, 'x1': p['optymalne']['dia'], 'y1': p['optymalne']['sys'], 'color': KOLORY_ESC['Optymalne'], 'nazwa': 'Optymalne'},
+
             # 2. Prawidłowe (2 prostokąty tworzące "L")
-            {'x0': p['optymalne']['dia'], 'y0': min_sys, 'x1': p['prawidlowe']['dia'], 'y1': p['optymalne']['sys'], 'color': KOLORY_ESC['Prawidłowe'], 'nazwa': 'Prawidłowe'},
-            {'x0': min_dia, 'y0': p['optymalne']['sys'], 'x1': p['prawidlowe']['dia'], 'y1': p['prawidlowe']['sys'], 'color': KOLORY_ESC['Prawidłowe'], 'nazwa': 'Prawidłowe'},
+            {'x0': min_dia, 'y0': p['prawidlowe']['sys'], 'x1': p['prawidlowe']['dia'], 'y1': p['podwyzszone']['sys'], 'color': KOLORY_ESC['Prawidłowe'], 'nazwa': 'Prawidłowe'},
+            {'x0': p['prawidlowe']['dia'], 'y0': min_sys, 'x1': p['podwyzszone']['dia'], 'y1': p['podwyzszone']['sys'], 'color': KOLORY_ESC['Prawidłowe'], 'nazwa': 'Prawidłowe'},
+
             # 3. Podwyższone (2 prostokąty tworzące "L")
-            {'x0': p['prawidlowe']['dia'], 'y0': min_sys, 'x1': p['podwyzszone']['dia'], 'y1': p['prawidlowe']['sys'], 'color': KOLORY_ESC['Podwyższone'], 'nazwa': 'Podwyższone'},
-            {'x0': min_dia, 'y0': p['prawidlowe']['sys'], 'x1': p['podwyzszone']['dia'], 'y1': p['podwyzszone']['sys'], 'color': KOLORY_ESC['Podwyższone'], 'nazwa': 'Podwyższone'},
+            {'x0': min_dia, 'y0': p['podwyzszone']['sys'], 'x1': p['podwyzszone']['dia'], 'y1': p['nadcisnienie_1']['sys'], 'color': KOLORY_ESC['Podwyższone'], 'nazwa': 'Podwyższone'},
+            {'x0': p['podwyzszone']['dia'], 'y0': min_sys, 'x1': p['nadcisnienie_1']['dia'], 'y1': p['nadcisnienie_1']['sys'], 'color': KOLORY_ESC['Podwyższone'], 'nazwa': 'Podwyższone'},
 
-            # --- SEKCJA 2: Izolowane Nadciśnienie Skurczowe (ISH) ---
-            # 4. ISH (jeden duży prostokąt)
-            {'x0': min_dia, 'y0': p['podwyzszone']['sys'], 'x1': p['podwyzszone']['dia'], 'y1': max_sys, 'color': KOLORY_ESC['Izolowane nadciśnienie skurczowe'], 'nazwa': 'Izolowane nadciśnienie skurczowe'},
+            # 4. ISH (jeden duży prostokąt) OK
+            {'x0': min_dia, 'y0': p['nadcisnienie_1']['sys'], 'x1': p['nadcisnienie_1']['dia'], 'y1': max_sys, 'color': KOLORY_ESC['Izolowane nadciśnienie skurczowe'], 'nazwa': 'Izolowane nadciśnienie skurczowe'},
 
-            # --- SEKCJA 3: Siatka nadciśnienia (DIA >= 90) ---
-            # Kolumna DIA [90, 100)
-            # 5. Nadciśnienie 1 (bo DIA jest w N1)
-            {'x0': p['podwyzszone']['dia'], 'y0': min_sys, 'x1': p['nadcisnienie_1']['dia'], 'y1': p['podwyzszone']['sys'], 'color': KOLORY_ESC['Nadciśnienie 1°'], 'nazwa': 'Nadciśnienie 1°'},
-            # 6. Nadciśnienie 1 (max(N1_DIA, N1_SYS))
-            {'x0': p['podwyzszone']['dia'], 'y0': p['podwyzszone']['sys'], 'x1': p['nadcisnienie_1']['dia'], 'y1': p['nadcisnienie_1']['sys'], 'color': KOLORY_ESC['Nadciśnienie 1°'], 'nazwa': 'Nadciśnienie 1°'},
-            # 7. Nadciśnienie 2 (max(N1_DIA, N2_SYS))
-            {'x0': p['podwyzszone']['dia'], 'y0': p['nadcisnienie_1']['sys'], 'x1': p['nadcisnienie_1']['dia'], 'y1': p['nadcisnienie_2']['sys'], 'color': KOLORY_ESC['Nadciśnienie 2°'], 'nazwa': 'Nadciśnienie 2°'},
-            # 8. Nadciśnienie 3 (max(N1_DIA, N3_SYS))
-            {'x0': p['podwyzszone']['dia'], 'y0': p['nadcisnienie_2']['sys'], 'x1': p['nadcisnienie_1']['dia'], 'y1': max_sys, 'color': KOLORY_ESC['Nadciśnienie 3°'], 'nazwa': 'Nadciśnienie 3°'},
+            # 5. Nadciśnienie 1
+            {'x0': p['nadcisnienie_1']['dia'], 'y0': min_sys, 'x1': p['nadcisnienie_2']['dia'], 'y1': p['nadcisnienie_2']['sys'], 'color': KOLORY_ESC['Nadciśnienie 1°'], 'nazwa': 'Nadciśnienie 1°'},
 
-            # Kolumna DIA [100, 110)
-            # 9. Nadciśnienie 2 (bo DIA jest w N2)
-            {'x0': p['nadcisnienie_1']['dia'], 'y0': min_sys, 'x1': p['nadcisnienie_2']['dia'], 'y1': p['nadcisnienie_1']['sys'], 'color': KOLORY_ESC['Nadciśnienie 2°'], 'nazwa': 'Nadciśnienie 2°'},
-            # 10. Nadciśnienie 2 (max(N2_DIA, N2_SYS))
-            {'x0': p['nadcisnienie_1']['dia'], 'y0': p['nadcisnienie_1']['sys'], 'x1': p['nadcisnienie_2']['dia'], 'y1': p['nadcisnienie_2']['sys'], 'color': KOLORY_ESC['Nadciśnienie 2°'], 'nazwa': 'Nadciśnienie 2°'},
-            # 11. Nadciśnienie 3 (max(N2_DIA, N3_SYS))
-            {'x0': p['nadcisnienie_1']['dia'], 'y0': p['nadcisnienie_2']['sys'], 'x1': p['nadcisnienie_2']['dia'], 'y1': max_sys, 'color': KOLORY_ESC['Nadciśnienie 3°'], 'nazwa': 'Nadciśnienie 3°'},
+            # 9. Nadciśnienie 2
+            {'x0': p['nadcisnienie_1']['dia'], 'y0': p['nadcisnienie_2']['sys'], 'x1': p['nadcisnienie_2']['dia'], 'y1': p['nadcisnienie_3']['sys'], 'color': KOLORY_ESC['Nadciśnienie 2°'], 'nazwa': 'Nadciśnienie 2°'},
+            {'x0': p['nadcisnienie_2']['dia'], 'y0': min_sys, 'x1': p['nadcisnienie_3']['dia'], 'y1': p['nadcisnienie_3']['sys'], 'color': KOLORY_ESC['Nadciśnienie 2°'], 'nazwa': 'Nadciśnienie 2°'},
 
-            # Kolumna DIA >= 110
-            # 12. Nadciśnienie 3 (bo DIA jest w N3)
-            {'x0': p['nadcisnienie_2']['dia'], 'y0': min_sys, 'x1': max_dia, 'y1': max_sys, 'color': KOLORY_ESC['Nadciśnienie 3°'], 'nazwa': 'Nadciśnienie 3°'},
+            {'x0': p['nadcisnienie_1']['dia'], 'y0': p['nadcisnienie_3']['sys'], 'x1': p['nadcisnienie_3']['dia'], 'y1': max_sys, 'color': KOLORY_ESC['Nadciśnienie 3°'], 'nazwa': 'Nadciśnienie 3°'},
+            {'x0': p['nadcisnienie_3']['dia'], 'y0': min_sys, 'x1': max_dia, 'y1': max_sys, 'color': KOLORY_ESC['Nadciśnienie 3°'], 'nazwa': 'Nadciśnienie 3°'},
         ]
 
         shapes = [
@@ -142,7 +129,7 @@ def generate_esc_category_bar_chart(df):
         fig.update_traces(textposition='outside', textfont_size=12)
         fig.update_layout(
             xaxis_title="Kategoria ciśnienia", yaxis_title="Liczba pomiarów", showlegend=False,
-            height=WYSOKOSC_WYKRESU_MALY,
+            height=WYSOKOSC_WYKRESU_DUZY,
             xaxis={'categoryorder': 'array', 'categoryarray': KOLEJNOSC_ESC},
             yaxis={'gridcolor': 'lightgray'}, margin=dict(t=80)
         )

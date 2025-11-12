@@ -40,6 +40,7 @@ URUCHOMIENIE:
 python app.py
 """
 
+import os
 from dash import Dash
 
 # Import modułów projektu
@@ -64,8 +65,11 @@ from callbacks import register_callbacks
 # =============================================================================
 # INICJALIZACJA DANYCH I WYKRESÓW POCZĄTKOWYCH
 # =============================================================================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#EXCEL_PATH = os.path.join(BASE_DIR, NAZWA_PLIKU_EXCEL)
+
 print("🔄 Wczytywanie danych...")
-initial_df, initial_status = wczytaj_i_przetworz_dane(NAZWA_PLIKU_EXCEL)
+initial_df, initial_status = wczytaj_i_przetworz_dane(BASE_DIR)
 
 print("📊 Generowanie wykresów początkowych...")
 # Wykresy
@@ -105,30 +109,32 @@ app.layout = create_app_layout(
 )
 
 # Callbacki
-register_callbacks(app)
+register_callbacks(app, BASE_DIR)
 
 
 # =============================================================================
 # URUCHOMIENIE APLIKACJI
 # =============================================================================
 if __name__ == '__main__':
-    print("""
-    ╔═══════════════════════════════════════════════════════════════╗
-    ║   💓 Dashboard Pomiarów Ciśnienia Krwi                        ║
-    ║   📋 Zgodny z wytycznymi ESC/ESH                              ║
-    ║                                                                ║
-    ║   ✅ Aplikacja uruchomiona pomyślnie!                         ║
-    ║   🌐 Otwórz przeglądarkę: http://127.0.0.1:8050               ║
-    ║                                                                ║
-    ║   📂 Struktura modularna - łatwe dodawanie zakładek!          ║
-    ║   📊 9 zakładek z analizami                                   ║
-    ║   🔄 Automatyczne odświeżanie danych                          ║
-    ║   📥 Eksport do HTML                                          ║
-    ║                                                                ║
-    ║   📚 Dokumentacja: README.md                                  ║
-    ║   ⚡ Szybki start: QUICK_START.md                             ║
-    ║   🎓 Przykład: EXAMPLE_NEW_TAB.md                             ║
-    ╚═══════════════════════════════════════════════════════════════╝
-    """)
+    import sys
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'True':
+        print("""
+        ╔═══════════════════════════════════════════════════════════════╗
+        ║   💓 Dashboard Pomiarów Ciśnienia Krwi                        ║
+        ║   📋 Zgodny z wytycznymi ESC/ESH                              ║
+        ║                                                               ║
+        ║   ✅ Aplikacja uruchomiona pomyślnie!                         ║
+        ║   🌐 Otwórz przeglądarkę: http://127.0.0.1:8050               ║
+        ║                                                               ║
+        ║   📂 Struktura modularna - łatwe dodawanie zakładek!          ║
+        ║   📊 9 zakładek z analizami                                   ║
+        ║   🔄 Automatyczne odświeżanie danych                          ║
+        ║   📥 Eksport do HTML                                          ║
+        ║                                                               ║
+        ║   📚 Dokumentacja: README.md                                  ║
+        ║   ⚡ Szybki start: QUICK_START.md                              ║
+        ║   🎓 Przykład: EXAMPLE_NEW_TAB.md                             ║
+        ╚═══════════════════════════════════════════════════════════════╝
+        """)
 
     app.run(debug=True)

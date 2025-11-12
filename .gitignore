@@ -1,2 +1,7 @@
 /.qodo/
 /.venv/
+__pycache__/
+*.pyc
+*.pyd
+*.log
+.coverage

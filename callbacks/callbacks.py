@@ -1,7 +1,8 @@
 """
-Definicje wszystkich callbacków aplikacji
+Definicje wszystkich callbacków aplikacji (ZOPTYMALIZOWANE)
 """
 
+import os
 import datetime
 import pandas as pd
 from io import StringIO
@@ -23,7 +24,7 @@ from charts import (
 )
 
 
-def register_callbacks(app):
+def register_callbacks(app, project_root_path):
     """
     Rejestruje wszystkie callbacki aplikacji.
 
@@ -32,19 +33,17 @@ def register_callbacks(app):
     """
 
     # =========================================================================
-    # CALLBACK: Odświeżanie danych z pliku
+    # CALLBACK: Odświeżanie danych z pliku (JEDYNE MIEJSCE gdzie wczytujemy plik)
     # =========================================================================
     @callback(
         Output('data-store', 'data'),
         Output('status-output', 'children'),
-        Input('refresh-button', 'n_clicks')
+        Input('refresh-button', 'n_clicks'),
+        prevent_initial_call=True  # ← KLUCZOWE: Nie uruchamiaj przy starcie
     )
     def refresh_data(n_clicks):
         """Odświeża dane z pliku Excel."""
-        if n_clicks is None:
-            return no_update, no_update
-
-        df, status = wczytaj_i_przetworz_dane(NAZWA_PLIKU_EXCEL)
+        df, status = wczytaj_i_przetworz_dane(project_root_path)
         return df.to_json(date_format='iso', orient='split'), status
 
 
@@ -57,7 +56,8 @@ def register_callbacks(app):
         Output('kpi-max-reading', 'children'),
         Output('kpi-norm-percent', 'children'),
         Output('graph-classification-pie', 'figure'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykresy już są w initial_figures
     )
     def update_summary(stored_data):
         """Aktualizuje zakładkę podsumowania (KPI + wykres kołowy)."""
@@ -73,7 +73,8 @@ def register_callbacks(app):
     # =========================================================================
     @callback(
         Output('graph-esc-bar', 'figure'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_esc_bar(stored_data):
         """Aktualizuje wykres słupkowy klasyfikacji ESC."""
@@ -89,7 +90,8 @@ def register_callbacks(app):
     # =========================================================================
     @callback(
         Output('graph-classification-matrix', 'figure'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_matrix(stored_data):
         """Aktualizuje macierz klasyfikacji."""
@@ -105,7 +107,8 @@ def register_callbacks(app):
     # =========================================================================
     @callback(
         Output('graph-trend', 'figure'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_trend(stored_data):
         """Aktualizuje wykres trendu w czasie."""
@@ -121,7 +124,8 @@ def register_callbacks(app):
     # =========================================================================
     @callback(
         Output('graph-hour', 'figure'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_circadian(stored_data):
         """Aktualizuje wykres rytmu dobowego."""
@@ -137,7 +141,8 @@ def register_callbacks(app):
     # =========================================================================
     @callback(
         Output('graph-scatter', 'figure'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_correlation(stored_data):
         """Aktualizuje wykres korelacji SYS-DIA-PUL."""
@@ -153,7 +158,8 @@ def register_callbacks(app):
     # =========================================================================
     @callback(
         Output('graph-heatmap', 'figure'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_heatmap(stored_data):
         """Aktualizuje heatmapę ciśnienia."""
@@ -169,7 +175,8 @@ def register_callbacks(app):
     # =========================================================================
     @callback(
         Output('graph-hemodynamics', 'figure'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_hemodynamics(stored_data):
         """Aktualizuje wykres analizy hemodynamicznej."""
@@ -186,7 +193,8 @@ def register_callbacks(app):
     @callback(
         Output('graph-comparison', 'figure'),
         Input('boxplot-radio', 'value'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres generowany w layouts/tabs.py
     )
     def update_comparison(category, stored_data):
         """Aktualizuje wykres porównawczy (tylko violin)."""
@@ -203,7 +211,8 @@ def register_callbacks(app):
     @callback(
         Output('graph-histogram', 'figure'),
         Input('histogram-radio', 'value'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_histogram(column, stored_data):
         """Aktualizuje histogram rozkładu parametru."""
@@ -449,7 +458,8 @@ def register_callbacks(app):
     # =========================================================================
     @callback(
         Output('graph-hour-static', 'figure'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Wykres już jest w initial_figures
     )
     def update_static_circadian_chart(stored_data):
         if stored_data is None:
@@ -476,7 +486,8 @@ def register_callbacks(app):
     @callback(
         Output('day-slider', 'max'),
         Output('day-slider', 'marks'),
-        Input('data-store', 'data')
+        Input('data-store', 'data'),
+        prevent_initial_call=True  # ← Dane już są w initial_df_json
     )
     def update_day_slider_options(stored_data):
         """Aktualizuje opcje suwaka na podstawie unikalnych dni w danych."""
@@ -513,6 +524,7 @@ def register_callbacks(app):
         unique_days = sorted(df['Datetime'].dt.date.unique())
 
         if len(unique_days) < 7:
+            from charts.utils import utworz_pusty_wykres
             return utworz_pusty_wykres("Potrzeba min. 7 dni do animacji")
 
         possible_end_dates = unique_days[6:]
@@ -568,8 +580,8 @@ def register_callbacks(app):
                 /* Kolory kafelków */
                 .kpi-card:nth-child(1) { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); } /* Średnie SYS */
                 .kpi-card:nth-child(2) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); } /* Średnie DIA */
-                .kpi-card:nth-child(3) { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); } /* Najwyższy pomiar - NOWY KOLOR */
-                .kpi-card:nth-child(4) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); } /* % w normie - NOWY KOLOR */
+                .kpi-card:nth-child(3) { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); } /* Najwyższy pomiar */
+                .kpi-card:nth-child(4) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); } /* % w normie */
 
                 /* Style dla tabelki z wytycznymi */
                 .guidelines-table { width: 100%; border-collapse: collapse; margin-top: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
