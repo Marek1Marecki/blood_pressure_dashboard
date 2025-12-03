@@ -16,9 +16,108 @@ Zawiera konfiguracje dla:
 # =============================================================================
 # PODSTAWOWA KONFIGURACJA
 # =============================================================================
-NAZWA_PLIKU_EXCEL = "Pomiary_SYS_DIA.xlsx"
 NAZWA_PLIKU_FEATHER = "pomiary_cache.feather"
+DATA_CACHE_FILE = "pomiary_cache.pkl"
+DATA_CACHE_TTL_MINUTES = 5  # Ile minut cache może być uznany za świeży
 STANDARDOWE_GODZINY = [10, 13, 16, 19, 22]
+
+# =============================================================================
+# KONFIGURACJA EKSPORTU WYKRESÓW (HTML)
+# =============================================================================
+# Każdy wpis określa kolejność, sekcję i generator wykresu używany w eksporcie.
+# Pole `builder` to klucz mapowany w callbacks/export_html na konkretną funkcję.
+EXPORT_CHART_DEFINITIONS = [
+    {
+        "id": "01_Podsumowanie_klasyfikacji",
+        "section": "Podstawowe Analizy",
+        "builder": "summary_pie",
+        "enabled": True,
+    },
+    {
+        "id": "02_Klasyfikacja_ESC_wykres",
+        "section": "Podstawowe Analizy",
+        "builder": "esc_bar",
+        "enabled": False,
+    },
+    {
+        "id": "03_Macierz_klasyfikacji",
+        "section": "Podstawowe Analizy",
+        "builder": "classification_matrix",
+        "enabled": True,
+    },
+    {
+        "id": "04_Trend_w_czasie",
+        "section": "Podstawowe Analizy",
+        "builder": "trend",
+        "enabled": True,
+    },
+    {
+        "id": "05_Rytm_dobowy",
+        "section": "Podstawowe Analizy",
+        "builder": "circadian",
+        "enabled": True,
+    },
+    {
+        "id": "06_Analiza_hemodynamiczna",
+        "section": "Analizy Zaawansowane",
+        "builder": "hemodynamics",
+        "enabled": True,
+    },
+    {
+        "id": "07_Korelacja_SYS_DIA_PUL",
+        "section": "Analizy Zaawansowane",
+        "builder": "correlation",
+        "enabled": True,
+    },
+    {
+        "id": "08_Heatmapa_dzien_godzina",
+        "section": "Analizy Zaawansowane",
+        "builder": "heatmap",
+        "enabled": True,
+    },
+    {
+        "id": "09_Porownanie_godziny_VIOLIN",
+        "section": "Porównania Okresów (Violin Plots)",
+        "builder": "comparison_hour",
+        "enabled": True,
+    },
+    {
+        "id": "10_Porownanie_dzien_roboczy_VIOLIN",
+        "section": "Porównania Okresów (Violin Plots)",
+        "builder": "comparison_day",
+        "enabled": True,
+    },
+    {
+        "id": "11_Histogram_SYS",
+        "section": "Rozkłady Parametrów",
+        "builder": "histogram_sys",
+        "enabled": True,
+    },
+    {
+        "id": "12_Histogram_DIA",
+        "section": "Rozkłady Parametrów",
+        "builder": "histogram_dia",
+        "enabled": True,
+    },
+    {
+        "id": "13_Histogram_Puls",
+        "section": "Rozkłady Parametrów",
+        "builder": "histogram_pul",
+        "enabled": True,
+    },
+]
+
+# =============================================================================
+# KONFIGURACJA GOOGLE SHEETS
+# =============================================================================
+# Wklej tutaj pełny URL do swojego Arkusza Google
+GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1LXsCX071uHog7Ejpp5nCK5wZYJzkCQg0eo3bqBw98LE/edit"
+# Nazwa arkusza (zakładki) wewnątrz pliku, z której pobieramy dane
+WORKSHEET_NAME = "Pomiary"
+
+# Plik z danymi uwierzytelniającymi
+GOOGLE_CREDENTIALS_FILE = "google_credentials.json"
+
 
 # =============================================================================
 # PROGI KLASYFIKACJI CIŚNIENIA (wg aktualnych wytycznych ESC/ESH)
@@ -142,3 +241,9 @@ TEMPLATE_PLOTLY = "plotly_white"
 WYSOKOSC_WYKRESU_STANDARD = 600
 WYSOKOSC_WYKRESU_DUZY = 700
 WYSOKOSC_WYKRESU_MALY = 500
+
+# Granice dla osi wykresów (nowa sekcja)
+MIN_DIA = 40
+MAX_DIA = 120
+MIN_SYS = 60
+MAX_SYS = 200

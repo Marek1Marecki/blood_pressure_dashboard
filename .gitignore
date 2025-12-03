@@ -4,4 +4,16 @@ __pycache__/
 *.pyc
 *.pyd
 *.log
+# Google Sheets credentials (lokalnie)
+google_credentials.json
+
+# JSON-y z danymi (brak innych w repo)
+*.json
+
+# Cache danych analitycznych
+*.pkl
+*.feather
 .coverage
+/.specify/
+/.windsurf/
+/Dashboard_Cisnienie_20251104_225924.html

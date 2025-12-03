@@ -9,7 +9,7 @@ statycznym (średnia z całego okresu) oraz animowanym (kroczące okno 7-dniowe)
 
 import pandas as pd
 import plotly.graph_objects as go
-from .utils import utworz_pusty_wykres
+from .utils import utworz_pusty_wykres, validate_dataframe
 from config import KOLORY_PARAMETROW, TEMPLATE_PLOTLY
 
 def generate_circadian_rhythm_chart(df, start_date=None, end_date=None):
@@ -40,8 +40,9 @@ def generate_circadian_rhythm_chart(df, start_date=None, end_date=None):
             Dash. W przypadku braku danych lub błędu, zwraca pusty wykres
             z odpowiednim komunikatem.
     """
-    if df.empty:
-        return utworz_pusty_wykres()
+    valid, msg = validate_dataframe(df, ['Datetime', 'Hour', 'SYS', 'DIA'])
+    if not valid:
+        return utworz_pusty_wykres(msg)
 
     try:
         plot_df = df.copy()

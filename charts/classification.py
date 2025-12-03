@@ -13,10 +13,12 @@ związanych z klasyfikacją pomiarów ciśnienia krwi:
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from .utils import utworz_pusty_wykres
+from .utils import utworz_pusty_wykres, validate_dataframe
+
 from config import (
     PROGI_ESC, KOLORY_ESC, KOLEJNOSC_ESC,
-    TEMPLATE_PLOTLY, WYSOKOSC_WYKRESU_DUZY
+    TEMPLATE_PLOTLY, WYSOKOSC_WYKRESU_DUZY,
+    MIN_DIA, MAX_DIA, MIN_SYS, MAX_SYS,
 )
 
 def generate_classification_matrix_chart(df):
@@ -37,41 +39,44 @@ def generate_classification_matrix_chart(df):
         go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
             błędu, zwraca pusty wykres z komunikatem.
     """
-    if df.empty:
-        return utworz_pusty_wykres()
+    valid, msg = validate_dataframe(df, ['SYS', 'DIA', 'Datetime', 'Kategoria'])
+    if not valid:
+        return utworz_pusty_wykres(msg)
 
     try:
         fig = go.Figure()
 
-        min_dia, max_dia = 40, 120
-        min_sys, max_sys = 60, 200
-
         p = PROGI_ESC # Skrót dla czytelności
 
         strefy = [
-            # 1. Optymalne
-            {'x0': min_dia, 'y0': min_sys, 'x1': p['optymalne']['dia'], 'y1': p['optymalne']['sys'], 'color': KOLORY_ESC['Optymalne'], 'nazwa': 'Optymalne'},
+            # === OPTYMALNE (lewy dolny róg): SYS < 120 i DIA < 70 ===
+            {'x0': MIN_DIA, 'y0': MIN_SYS, 'x1': p['optymalne']['dia'], 'y1': p['optymalne']['sys'], 'color': KOLORY_ESC['Optymalne'], 'nazwa': 'Optymalne'},
 
-            # 2. Prawidłowe (2 prostokąty tworzące "L")
-            {'x0': min_dia, 'y0': p['prawidlowe']['sys'], 'x1': p['prawidlowe']['dia'], 'y1': p['podwyzszone']['sys'], 'color': KOLORY_ESC['Prawidłowe'], 'nazwa': 'Prawidłowe'},
-            {'x0': p['prawidlowe']['dia'], 'y0': min_sys, 'x1': p['podwyzszone']['dia'], 'y1': p['podwyzszone']['sys'], 'color': KOLORY_ESC['Prawidłowe'], 'nazwa': 'Prawidłowe'},
+            # === PRAWIDŁOWE (kształt litery "L") ===
+            # pionowy słupek – DIA < 70, SYS 120-130
+            {'x0': MIN_DIA, 'y0': p['prawidlowe']['sys'], 'x1': p['prawidlowe']['dia'], 'y1': p['podwyzszone']['sys'], 'color': KOLORY_ESC['Prawidłowe'], 'nazwa': 'Prawidłowe'},
+            # poziomy pasek – DIA 70-80, SYS < 130
+            {'x0': p['prawidlowe']['dia'], 'y0': MIN_SYS, 'x1': p['podwyzszone']['dia'], 'y1': p['podwyzszone']['sys'], 'color': KOLORY_ESC['Prawidłowe'], 'nazwa': 'Prawidłowe'},
 
-            # 3. Podwyższone (2 prostokąty tworzące "L")
-            {'x0': min_dia, 'y0': p['podwyzszone']['sys'], 'x1': p['podwyzszone']['dia'], 'y1': p['nadcisnienie_1']['sys'], 'color': KOLORY_ESC['Podwyższone'], 'nazwa': 'Podwyższone'},
-            {'x0': p['podwyzszone']['dia'], 'y0': min_sys, 'x1': p['nadcisnienie_1']['dia'], 'y1': p['nadcisnienie_1']['sys'], 'color': KOLORY_ESC['Podwyższone'], 'nazwa': 'Podwyższone'},
+            # === PODWYŻSZONE (również kształt "L") ===
+            # pion – SYS 130-140 przy DIA < 80
+            {'x0': MIN_DIA, 'y0': p['podwyzszone']['sys'], 'x1': p['podwyzszone']['dia'], 'y1': p['nadcisnienie_1']['sys'], 'color': KOLORY_ESC['Podwyższone'], 'nazwa': 'Podwyższone'},
+            # poziom – DIA 80-90 przy SYS < 140
+            {'x0': p['podwyzszone']['dia'], 'y0': MIN_SYS, 'x1': p['nadcisnienie_1']['dia'], 'y1': p['nadcisnienie_1']['sys'], 'color': KOLORY_ESC['Podwyższone'], 'nazwa': 'Podwyższone'},
 
-            # 4. ISH (jeden duży prostokąt) OK
-            {'x0': min_dia, 'y0': p['nadcisnienie_1']['sys'], 'x1': p['nadcisnienie_1']['dia'], 'y1': max_sys, 'color': KOLORY_ESC['Izolowane nadciśnienie skurczowe'], 'nazwa': 'Izolowane nadciśnienie skurczowe'},
+            # === IZOLOWANE NADCIŚNIENIE SKURCZOWE (wysokie SYS, niskie DIA) ===
+            {'x0': MIN_DIA, 'y0': p['nadcisnienie_1']['sys'], 'x1': p['nadcisnienie_1']['dia'], 'y1': MAX_SYS, 'color': KOLORY_ESC['Izolowane nadciśnienie skurczowe'], 'nazwa': 'Izolowane nadciśnienie skurczowe'},
 
-            # 5. Nadciśnienie 1
-            {'x0': p['nadcisnienie_1']['dia'], 'y0': min_sys, 'x1': p['nadcisnienie_2']['dia'], 'y1': p['nadcisnienie_2']['sys'], 'color': KOLORY_ESC['Nadciśnienie 1°'], 'nazwa': 'Nadciśnienie 1°'},
+            # === NADCIŚNIENIE 1° (prostokąt dla DIA 90-100 oraz SYS 140-160) ===
+            {'x0': p['nadcisnienie_1']['dia'], 'y0': MIN_SYS, 'x1': p['nadcisnienie_2']['dia'], 'y1': p['nadcisnienie_2']['sys'], 'color': KOLORY_ESC['Nadciśnienie 1°'], 'nazwa': 'Nadciśnienie 1°'},
 
-            # 9. Nadciśnienie 2
+            # === NADCIŚNIENIE 2° (dwuczęściowe: pion + poziom) ===
             {'x0': p['nadcisnienie_1']['dia'], 'y0': p['nadcisnienie_2']['sys'], 'x1': p['nadcisnienie_2']['dia'], 'y1': p['nadcisnienie_3']['sys'], 'color': KOLORY_ESC['Nadciśnienie 2°'], 'nazwa': 'Nadciśnienie 2°'},
-            {'x0': p['nadcisnienie_2']['dia'], 'y0': min_sys, 'x1': p['nadcisnienie_3']['dia'], 'y1': p['nadcisnienie_3']['sys'], 'color': KOLORY_ESC['Nadciśnienie 2°'], 'nazwa': 'Nadciśnienie 2°'},
+            {'x0': p['nadcisnienie_2']['dia'], 'y0': MIN_SYS, 'x1': p['nadcisnienie_3']['dia'], 'y1': p['nadcisnienie_3']['sys'], 'color': KOLORY_ESC['Nadciśnienie 2°'], 'nazwa': 'Nadciśnienie 2°'},
 
-            {'x0': p['nadcisnienie_1']['dia'], 'y0': p['nadcisnienie_3']['sys'], 'x1': p['nadcisnienie_3']['dia'], 'y1': max_sys, 'color': KOLORY_ESC['Nadciśnienie 3°'], 'nazwa': 'Nadciśnienie 3°'},
-            {'x0': p['nadcisnienie_3']['dia'], 'y0': min_sys, 'x1': max_dia, 'y1': max_sys, 'color': KOLORY_ESC['Nadciśnienie 3°'], 'nazwa': 'Nadciśnienie 3°'},
+            # === NADCIŚNIENIE 3° (skrajne wartości SYS/DIA) ===
+            {'x0': p['nadcisnienie_1']['dia'], 'y0': p['nadcisnienie_3']['sys'], 'x1': p['nadcisnienie_3']['dia'], 'y1': MAX_SYS, 'color': KOLORY_ESC['Nadciśnienie 3°'], 'nazwa': 'Nadciśnienie 3°'},
+            {'x0': p['nadcisnienie_3']['dia'], 'y0': MIN_SYS, 'x1': MAX_DIA, 'y1': MAX_SYS, 'color': KOLORY_ESC['Nadciśnienie 3°'], 'nazwa': 'Nadciśnienie 3°'},
         ]
 
         shapes = [
@@ -110,8 +115,8 @@ def generate_classification_matrix_chart(df):
             title="Macierz Klasyfikacji Pomiarów Ciśnienia (wg aktualnych wytycznych)",
             xaxis_title="Ciśnienie Rozkurczowe (DIA) [mmHg]",
             yaxis_title="Ciśnienie Skurczowe (SYS) [mmHg]",
-            xaxis=dict(range=[min(min_dia, df['DIA'].min() - 5), max(max_dia, df['DIA'].max() + 5)], gridcolor='rgba(200,200,200,0.5)'),
-            yaxis=dict(range=[min(min_sys, df['SYS'].min() - 5), max(max_sys, df['SYS'].max() + 5)], gridcolor='rgba(200,200,200,0.5)'),
+            xaxis=dict(range=[min(MIN_DIA, df['DIA'].min() - 5), max(MAX_DIA, df['DIA'].max() + 5)], gridcolor='rgba(200,200,200,0.5)'),
+            yaxis=dict(range=[min(MIN_SYS, df['SYS'].min() - 5), max(MAX_SYS, df['SYS'].max() + 5)], gridcolor='rgba(200,200,200,0.5)'),
             shapes=shapes,
             template='plotly_white',
             height=WYSOKOSC_WYKRESU_DUZY,
@@ -147,8 +152,10 @@ def generate_esc_category_bar_chart(df):
         go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
             błędu, zwraca pusty wykres z komunikatem.
     """
-    if df.empty:
-        return utworz_pusty_wykres()
+    valid, msg = validate_dataframe(df, ['Kategoria'])
+    if not valid:
+        return utworz_pusty_wykres(msg)
+
     try:
         counts = df['Kategoria'].value_counts().reset_index()
         counts.columns = ['Kategoria', 'Liczba']

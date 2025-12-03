@@ -15,7 +15,7 @@ Porównania mogą być dokonywane np. względem pory dnia lub typu dnia
 """
 
 import plotly.express as px
-from .utils import utworz_pusty_wykres
+from .utils import utworz_pusty_wykres, validate_dataframe
 from config import KOLORY_PARAMETROW, TEMPLATE_PLOTLY, WYSOKOSC_WYKRESU_STANDARD
 
 
@@ -37,8 +37,10 @@ def generate_comparison_chart(df, category_column, chart_type='box'):
         go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
             błędu, zwraca pusty wykres z komunikatem.
     """
-    if df.empty:
-        return utworz_pusty_wykres()
+    required = ['SYS', 'DIA', category_column]
+    valid, msg = validate_dataframe(df, required)
+    if not valid:
+        return utworz_pusty_wykres(msg)
 
     try:
         plot_df = df.dropna(subset=[category_column])

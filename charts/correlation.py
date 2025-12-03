@@ -14,7 +14,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from scipy import stats
-from .utils import utworz_pusty_wykres
+from .utils import utworz_pusty_wykres, validate_dataframe
 from config import TEMPLATE_PLOTLY
 
 
@@ -39,8 +39,9 @@ def generate_correlation_chart(df):
         go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
             błędu, zwraca pusty wykres z komunikatem.
     """
-    if df.empty:
-        return utworz_pusty_wykres()
+    valid, msg = validate_dataframe(df, ['SYS', 'DIA', 'PUL'])
+    if not valid:
+        return utworz_pusty_wykres(msg)
 
     try:
         # Create scatter plot

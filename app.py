@@ -18,10 +18,21 @@ Aby uruchomić aplikację, należy wykonać polecenie w terminalu:
 """
 
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 from dash import Dash
 
+# Konfiguracja loggingu aplikacji
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        RotatingFileHandler('app.log', maxBytes=5 * 1024 * 1024, backupCount=3),
+        logging.StreamHandler()
+    ]
+)
+
 # Import modułów projektu
-from config import NAZWA_PLIKU_EXCEL
 from data_processing import wczytaj_i_przetworz_dane
 from charts import (
     generate_trend_chart,
@@ -43,7 +54,6 @@ from callbacks import register_callbacks
 # INICJALIZACJA DANYCH I WYKRESÓW POCZĄTKOWYCH
 # =============================================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-#EXCEL_PATH = os.path.join(BASE_DIR, NAZWA_PLIKU_EXCEL)
 
 print("🔄 Wczytywanie danych...")
 initial_df, initial_status = wczytaj_i_przetworz_dane(BASE_DIR)
@@ -93,7 +103,6 @@ register_callbacks(app, BASE_DIR)
 # URUCHOMIENIE APLIKACJI
 # =============================================================================
 if __name__ == '__main__':
-    import sys
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'True':
         print("""
         ╔═══════════════════════════════════════════════════════════════╗
@@ -109,7 +118,7 @@ if __name__ == '__main__':
         ║   📥 Eksport do HTML                                          ║
         ║                                                               ║
         ║   📚 Dokumentacja: README.md                                  ║
-        ║   ⚡ Szybki start: QUICK_START.md                              ║
+        ║   ⚡ Szybki start: QUICK_START.md                             ║
         ║   🎓 Przykład: EXAMPLE_NEW_TAB.md                             ║
         ╚═══════════════════════════════════════════════════════════════╝
         """)

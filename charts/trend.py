@@ -11,7 +11,7 @@ dla ciśnienia skurczowego, co ułatwia szybką ocenę pomiarów.
 """
 
 import plotly.graph_objects as go
-from .utils import utworz_pusty_wykres
+from .utils import utworz_pusty_wykres, validate_dataframe
 from config import KOLORY_PARAMETROW, PROGI_ESC, TEMPLATE_PLOTLY
 
 
@@ -36,6 +36,10 @@ def generate_trend_chart(df):
         go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
             błędu, zwraca pusty wykres z komunikatem.
     """
+    valid, msg = validate_dataframe(df, ['Datetime', 'SYS', 'DIA', 'PUL'])
+    if not valid:
+        return utworz_pusty_wykres(msg)
+
     if df.empty:
         return utworz_pusty_wykres()
 

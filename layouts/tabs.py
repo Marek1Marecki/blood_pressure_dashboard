@@ -79,8 +79,9 @@ def create_header(initial_status):
         html.H1("💓 Dashboard Pomiarów Ciśnienia Krwi"),
         html.Div([
             html.Button('🔄 Odśwież dane', id='refresh-button'),
+            html.Button('⏭️ Odśwież bez cache', id='refresh-bypass-button', style={'marginLeft': '10px'}),
             html.Button('📥 Eksport HTML', id='export-button', style={'marginLeft': '10px'}),
-        ], style={'display': 'flex', 'justifyContent': 'center'}),
+        ], style={'display': 'flex', 'justifyContent': 'center', 'gap': '10px'}),
         html.Div(
             id='status-output',
             children=initial_status,

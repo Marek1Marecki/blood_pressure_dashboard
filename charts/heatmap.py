@@ -12,7 +12,7 @@ wyższe lub niższe.
 """
 
 import plotly.express as px
-from .utils import utworz_pusty_wykres
+from .utils import utworz_pusty_wykres, validate_dataframe
 from config import TEMPLATE_PLOTLY
 
 
@@ -36,8 +36,9 @@ def generate_heatmap_chart(df):
             ilości danych do stworzenia tabeli przestawnej lub błędu,
             zwraca pusty wykres z komunikatem.
     """
-    if df.empty:
-        return utworz_pusty_wykres()
+    valid, msg = validate_dataframe(df, ['Dzień', 'Hour', 'SYS'])
+    if not valid:
+        return utworz_pusty_wykres(msg)
 
     try:
         if df['Dzień'].nunique() > 1 and df['Hour'].nunique() > 1:

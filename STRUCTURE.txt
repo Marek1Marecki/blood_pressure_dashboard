@@ -12,22 +12,22 @@ blood_pressure_dashboard/
 │   └── Uruchomienie serwera
 │
 ├── ⚙️ config.py                       # KONFIGURACJA - stałe, progi, kolory
-│   ├── NAZWA_PLIKU_EXCEL = "Pomiary_SYS_DIA.xlsx"
+│   ├── GOOGLE_SHEET_URL, WORKSHEET_NAME, GOOGLE_CREDENTIALS_FILE
+│   ├── DATA_CACHE_FILE, DATA_CACHE_TTL_MINUTES (lokalny cache danych)
+│   ├── EXPORT_CHART_DEFINITIONS (konfiguracja eksportu HTML)
 │   ├── STANDARDOWE_GODZINY = [10, 13, 16, 19, 22]
-│   ├── PROGI_ESC = {...}
-│   ├── KOLORY_ESC = {...}
-│   ├── KOLORY_PARAMETROW = {...}
+│   ├── PROGI_ESC / KOLORY_ESC / KOLORY_PARAMETROW
 │   └── TEMPLATE_PLOTLY = "plotly_white"
 │
 ├── 🔄 data_processing.py              # PRZETWARZANIE DANYCH
-│   ├── def klasyfikuj_cisnienie_esc(row)
+│   ├── def klasyfikuj_cisnienie_esc_wektorowo(df)
 │   │   └── Klasyfikuje pomiar według ESC/ESH
-│   └── def wczytaj_i_przetworz_dane(sciezka_pliku)
-│       ├── Wczytuje Excel
-│       ├── Oblicza MAP, PP
-│       ├── Dodaje cechy czasowe
+│   └── def wczytaj_i_przetworz_dane(sciezka_folderu, force_refresh=False)
+│       ├── Łączy się z Google Sheets (gspread + service account)
+│       ├── Używa lokalnego cache Pickle z TTL
+│       ├── Oblicza MAP, PP i cechy czasowe
 │       ├── Klasyfikuje pomiary
-│       └── Zwraca (DataFrame, komunikat)
+│       └── Zwraca (DataFrame, komunikat statusu)
 │
 ├── 📊 charts/                         # MODUŁ WYKRESÓW
 │   │
@@ -113,22 +113,22 @@ blood_pressure_dashboard/
 │       ├── Wszystkie zmiany w plikach
 │       └── Możliwe rozszerzenia
 │
-├── 📊 Pomiary_SYS_DIA.xlsx            # Plik danych (generowany przez użytkownika)
-│   └── Kolumny: Data, Godzina, SYS, DIA, PUL
+├── 🌐 Google Sheets                   # Zewnętrzne źródło danych
+│   └── Wymagane kolumny: Data, Godzina, SYS, DIA, PUL
 │
 └── 📦 requirements.txt                # (OPCJONALNY) Zależności
     ├── dash>=2.0.0
     ├── pandas>=1.3.0
     ├── plotly>=5.0.0
-    └── openpyxl>=3.0.0
+    └── gspread>=4.0.0
 
 
 ╔════════════════════════════════════════════════════════════════════════╗
 ║  PRZEPŁYW DANYCH                                                       ║
 ╚════════════════════════════════════════════════════════════════════════╝
 
-1. Pomiary_SYS_DIA.xlsx
-   ↓
+1. Google Sheets (udostępniony kontu serwisowemu)
+   ↓ (gspread, cache Pickle)
 2. data_processing.wczytaj_i_przetworz_dane()
    ↓ (DataFrame + komunikat)
 3. app.py - Inicjalizacja

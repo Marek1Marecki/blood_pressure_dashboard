@@ -12,7 +12,7 @@ co ułatwia interpretację kliniczną wyników.
 """
 
 import plotly.graph_objects as go
-from .utils import utworz_pusty_wykres
+from .utils import utworz_pusty_wykres, validate_dataframe
 from config import TEMPLATE_PLOTLY, WYSOKOSC_WYKRESU_STANDARD, KOLORY_PARAMETROW
 
 
@@ -36,6 +36,11 @@ def generate_hemodynamics_chart(df):
         go.Figure: Obiekt wykresu Plotly. W przypadku braku danych lub
             błędu, zwraca pusty wykres z komunikatem.
     """
+    required_columns = ['Datetime', 'MAP', 'PP']
+    valid, msg = validate_dataframe(df, required_columns)
+    if not valid:
+        return utworz_pusty_wykres(msg)
+
     if df.empty:
         return utworz_pusty_wykres()
 

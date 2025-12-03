@@ -14,11 +14,13 @@ Główne zadania tego modułu to:
 
 import os
 import datetime
+import logging
+from collections import OrderedDict
 import pandas as pd
+from functools import lru_cache
 from io import StringIO
 from dash import callback, Input, Output, State, no_update
 
-from config import NAZWA_PLIKU_EXCEL
 from data_processing import wczytaj_i_przetworz_dane
 from charts import (
     generate_trend_chart,
@@ -32,7 +34,24 @@ from charts import (
     generate_summary_data,
     generate_hemodynamics_chart
 )
+from config import EXPORT_CHART_DEFINITIONS, KOLORY_ESC
 
+logger = logging.getLogger(__name__)
+
+@lru_cache(maxsize=16)
+def _parse_store_cached(raw_json: str) -> pd.DataFrame:
+    """Cache-aware parser for data stored in dcc.Store."""
+    return pd.read_json(StringIO(raw_json), orient='split')
+
+def parse_store(stored_data):
+    """Safely parse JSON payload shared between callbacks and reuse cache."""
+    if not stored_data:
+        return None
+    try:
+        # Return shallow copy so downstream code can't mutate cached frame
+        return _parse_store_cached(stored_data).copy()
+    except ValueError:
+        return None
 
 def register_callbacks(app, project_root_path):
     """Rejestruje wszystkie callbacki aplikacji Dash.
@@ -52,34 +71,39 @@ def register_callbacks(app, project_root_path):
     """
 
     # =========================================================================
-    # CALLBACK: Odświeżanie danych z pliku (JEDYNE MIEJSCE gdzie wczytujemy plik)
+    # CALLBACK: Odświeżanie danych (centralne miejsce pobierania danych)
     # =========================================================================
     @callback(
         Output('data-store', 'data'),
         Output('status-output', 'children'),
         Input('refresh-button', 'n_clicks'),
+        Input('refresh-bypass-button', 'n_clicks'),
         prevent_initial_call=True  # ← KLUCZOWE: Nie uruchamiaj przy starcie
     )
-    def refresh_data(n_clicks):
+    def refresh_data(n_clicks_regular, n_clicks_bypass):
         """Callback odświeżający dane po kliknięciu przycisku.
 
-        Ta funkcja jest wywoływana po kliknięciu przycisku "Odśwież dane".
-        Jej zadaniem jest ponowne wczytanie i przetworzenie danych
-        z pliku Excel, a następnie zaktualizowanie centralnego magazynu
-        danych (`dcc.Store`) oraz komunikatu o statusie.
+        Ta funkcja jest wywoływana po kliknięciu przycisku "Odśwież dane"
+        lub "Odśwież bez cache". Jej zadaniem jest ponowne wczytanie i
+        przetworzenie danych z Google Sheets, a następnie zaktualizowanie
+        centralnego magazynu danych (`dcc.Store`) oraz komunikatu o statusie.
 
         Args:
-            n_clicks (int): Liczba kliknięć przycisku. Parametr ten jest
-                potrzebny do wyzwolenia callbacku, ale jego wartość
-                nie jest używana.
+            n_clicks_regular (int): Liczba kliknięć przycisku standardowego.
+            n_clicks_bypass (int): Liczba kliknięć wymuszających pominięcie cache.
 
         Returns:
             tuple[str, str]: Krotka zawierająca:
                 - zaktualizowane dane w formacie JSON,
                 - nowy komunikat o statusie operacji.
         """
-        df, status = wczytaj_i_przetworz_dane(project_root_path)
-        return df.to_json(date_format='iso', orient='split'), status
+        try:
+            force_refresh = bool(n_clicks_bypass)
+            df, status = wczytaj_i_przetworz_dane(project_root_path, force_refresh=force_refresh)
+            return df.to_json(date_format='iso', orient='split'), status
+        except Exception as exc:  # noqa: BLE001 - logujemy i sygnalizujemy błąd w UI
+            logger.exception("Błąd odświeżania danych")
+            return no_update, f"❌ Błąd: {exc}"
 
 
     # =========================================================================
@@ -113,7 +137,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return "B/D", "B/D", "B/D", "B/D", {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return "B/D", "B/D", "B/D", "B/D", {}
         return generate_summary_data(df)
 
 
@@ -142,7 +168,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_esc_category_bar_chart(df)
 
 
@@ -171,7 +199,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_classification_matrix_chart(df)
 
 
@@ -200,7 +230,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_trend_chart(df)
 
 
@@ -229,7 +261,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_circadian_rhythm_chart(df)
 
 
@@ -258,7 +292,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_correlation_chart(df)
 
 
@@ -287,7 +323,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_heatmap_chart(df)
 
 
@@ -316,7 +354,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_hemodynamics_chart(df)
 
 
@@ -348,7 +388,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_comparison_chart(df, category, 'violin')
 
 
@@ -380,7 +422,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_histogram_chart(df, column)
 
 
@@ -416,81 +460,52 @@ def register_callbacks(app, project_root_path):
             return "❌ Brak danych do wyeksportowania"
 
         try:
-            df = pd.read_json(StringIO(stored_data), orient='split')
-            if df.empty:
+            df = parse_store(stored_data)
+            if df is None or df.empty:
                 return "❌ Brak danych do wyeksportowania"
 
-            # =====================================================================
-            # KONFIGURACJA EKSPORTU - łatwa edycja wykresów do eksportu
-            # =====================================================================
-            # Ustaw False dla wykresów, które NIE mają być eksportowane
-            wykresy_config = {
-                # Podstawowe wykresy
-                'Podsumowanie_KPI': True,                    # Wykres kołowy klasyfikacji
-                'Klasyfikacja_ESC': False,                    # Wykres słupkowy
-                'Macierz_klasyfikacji': True,                # Macierz 2D
-                'Trend_w_czasie': True,                      # Trend wszystkich parametrów
-                'Rytm_dobowy': True,                         # Dobowy rytm ciśnienia
-                'Analiza_hemodynamiczna': True,              # PP vs MAP
-                'Korelacja_SYS_DIA': True,                   # Scatter SYS-DIA-PUL
-                'Heatmapa': True,                            # Mapa cieplna
+            chart_definitions = [
+                ("01_Podsumowanie_klasyfikacji", "Podstawowe Analizy", True,
+                 lambda frame: generate_summary_data(frame)[4]),
+                ("02_Klasyfikacja_ESC_wykres", "Podstawowe Analizy", False,
+                 lambda frame: generate_esc_category_bar_chart(frame)),
+                ("03_Macierz_klasyfikacji", "Podstawowe Analizy", True,
+                 lambda frame: generate_classification_matrix_chart(frame)),
+                ("04_Trend_w_czasie", "Podstawowe Analizy", True,
+                 lambda frame: generate_trend_chart(frame)),
+                ("05_Rytm_dobowy", "Podstawowe Analizy", True,
+                 lambda frame: generate_circadian_rhythm_chart(frame)),
+                ("06_Analiza_hemodynamiczna", "Analizy Zaawansowane", True,
+                 lambda frame: generate_hemodynamics_chart(frame)),
+                ("07_Korelacja_SYS_DIA_PUL", "Analizy Zaawansowane", True,
+                 lambda frame: generate_correlation_chart(frame)),
+                ("08_Heatmapa_dzien_godzina", "Analizy Zaawansowane", True,
+                 lambda frame: generate_heatmap_chart(frame)),
+                ("09_Porownanie_godziny_VIOLIN", "Porównania Okresów (Violin Plots)", True,
+                 lambda frame: generate_comparison_chart(frame, 'Godzina Pomiaru', 'violin')),
+                ("10_Porownanie_dzien_roboczy_VIOLIN", "Porównania Okresów (Violin Plots)", True,
+                 lambda frame: generate_comparison_chart(frame, 'Typ Dnia', 'violin')),
+                ("11_Histogram_SYS", "Rozkłady Parametrów", True,
+                 lambda frame: generate_histogram_chart(frame, 'SYS')),
+                ("12_Histogram_DIA", "Rozkłady Parametrów", True,
+                 lambda frame: generate_histogram_chart(frame, 'DIA')),
+                ("13_Histogram_Puls", "Rozkłady Parametrów", True,
+                 lambda frame: generate_histogram_chart(frame, 'PUL')),
+            ]
 
-                # Porównania - tylko VIOLIN
-                'Porownanie_godziny_violin': True,           # Violin plot - godziny
-                'Porownanie_dzien_violin': True,             # Violin plot - dzień roboczy/weekend
-
-                # Histogramy - WSZYSTKIE parametry
-                'Histogram_SYS': True,                       # Rozkład SYS
-                'Histogram_DIA': True,                       # Rozkład DIA
-                'Histogram_PUL': True,                       # Rozkład pulsu
-            }
-            # =====================================================================
-
-            # Generowanie wykresów (tylko te zaznaczone jako True)
             wykresy = {}
+            sekcje = OrderedDict()
 
-            # --- PODSTAWOWE WYKRESY ---
-            if wykresy_config.get('Podsumowanie_KPI', False):
-                _, _, _, _, fig_pie = generate_summary_data(df)
-                wykresy['01_Podsumowanie_klasyfikacji'] = fig_pie
-
-            if wykresy_config.get('Klasyfikacja_ESC', False):
-                wykresy['02_Klasyfikacja_ESC_wykres'] = generate_esc_category_bar_chart(df)
-
-            if wykresy_config.get('Macierz_klasyfikacji', False):
-                wykresy['03_Macierz_klasyfikacji'] = generate_classification_matrix_chart(df)
-
-            if wykresy_config.get('Trend_w_czasie', False):
-                wykresy['04_Trend_w_czasie'] = generate_trend_chart(df)
-
-            if wykresy_config.get('Rytm_dobowy', False):
-                wykresy['05_Rytm_dobowy'] = generate_circadian_rhythm_chart(df)
-
-            if wykresy_config.get('Analiza_hemodynamiczna', False):
-                wykresy['06_Analiza_hemodynamiczna'] = generate_hemodynamics_chart(df)
-
-            if wykresy_config.get('Korelacja_SYS_DIA', False):
-                wykresy['07_Korelacja_SYS_DIA_PUL'] = generate_correlation_chart(df)
-
-            if wykresy_config.get('Heatmapa', False):
-                wykresy['08_Heatmapa_dzien_godzina'] = generate_heatmap_chart(df)
-
-            # --- PORÓWNANIA - TYLKO VIOLIN ---
-            if wykresy_config.get('Porownanie_godziny_violin', False):
-                wykresy['09_Porownanie_godziny_VIOLIN'] = generate_comparison_chart(df, 'Godzina Pomiaru', 'violin')
-
-            if wykresy_config.get('Porownanie_dzien_violin', False):
-                wykresy['10_Porownanie_dzien_roboczy_VIOLIN'] = generate_comparison_chart(df, 'Typ Dnia', 'violin')
-
-            # --- HISTOGRAMY - WSZYSTKIE PARAMETRY ---
-            if wykresy_config.get('Histogram_SYS', False):
-                wykresy['11_Histogram_SYS'] = generate_histogram_chart(df, 'SYS')
-
-            if wykresy_config.get('Histogram_DIA', False):
-                wykresy['12_Histogram_DIA'] = generate_histogram_chart(df, 'DIA')
-
-            if wykresy_config.get('Histogram_PUL', False):
-                wykresy['13_Histogram_Puls'] = generate_histogram_chart(df, 'PUL')
+            for chart_id, section, enabled, builder in chart_definitions:
+                if not enabled:
+                    continue
+                figure = builder(df)
+                if figure is None:
+                    continue
+                wykresy[chart_id] = figure
+                if section not in sekcje:
+                    sekcje[section] = []
+                sekcje[section].append(chart_id)
 
             if not wykresy:
                 return "⚠️ Brak wykresów do eksportu - wszystkie są wyłączone w konfiguracji"
@@ -576,49 +591,21 @@ def register_callbacks(app, project_root_path):
                 f.write('</div>')
 
                 # Grupowanie wykresów według sekcji
-                sekcje = {
-                    'Podstawowe Analizy': [
-                        '01_Podsumowanie_klasyfikacji',
-                        '02_Klasyfikacja_ESC_wykres',
-                        '03_Macierz_klasyfikacji',
-                        '04_Trend_w_czasie',
-                        '05_Rytm_dobowy'
-                    ],
-                    'Analizy Zaawansowane': [
-                        '06_Analiza_hemodynamiczna',
-                        '07_Korelacja_SYS_DIA_PUL',
-                        '08_Heatmapa_dzien_godzina'
-                    ],
-                    'Porównania Okresów (Violin Plots)': [
-                        '09_Porownanie_godziny_VIOLIN',
-                        '10_Porownanie_dzien_roboczy_VIOLIN'
-                    ],
-                    'Rozkłady Parametrów': [
-                        '11_Histogram_SYS',
-                        '12_Histogram_DIA',
-                        '13_Histogram_Puls'
-                    ]
-                }
-
                 for sekcja_nazwa, sekcja_wykresy in sekcje.items():
-                    # Sprawdź czy są jakieś wykresy w tej sekcji
-                    wykresy_w_sekcji = [w for w in sekcja_wykresy if w in wykresy]
-                    if wykresy_w_sekcji:
-                        f.write(f'<div class="section-header">📊 {sekcja_nazwa}</div>')
+                    f.write(f'<div class="section-header">📊 {sekcja_nazwa}</div>')
 
-                        for wykres_key in wykresy_w_sekcji:
-                            wykres = wykresy[wykres_key]
-                            # Czytelna nazwa wykresu
-                            wykres_nazwa = wykres_key.split('_', 1)[1].replace('_', ' ').title()
+                    for wykres_key in sekcja_wykresy:
+                        wykres = wykresy[wykres_key]
+                        wykres_nazwa = wykres_key.split('_', 1)[1].replace('_', ' ').title()
 
-                            f.write('<div class="chart-container">')
-                            f.write(f'<div class="chart-title">{wykres_nazwa}</div>')
-                            f.write(wykres.to_html(
-                                full_html=False,
-                                include_plotlyjs='cdn',
-                                config={'responsive': True, 'displayModeBar': True}
-                            ))
-                            f.write('</div>')
+                        f.write('<div class="chart-container">')
+                        f.write(f'<div class="chart-title">{wykres_nazwa}</div>')
+                        f.write(wykres.to_html(
+                            full_html=False,
+                            include_plotlyjs='cdn',
+                            config={'responsive': True, 'displayModeBar': True}
+                        ))
+                        f.write('</div>')
 
                 f.write('<hr style="margin: 40px auto; max-width: 1200px; border: none; border-top: 2px solid #ddd;">')
                 f.write('<p class="info">📋 Dashboard zgodny z aktualnymi wytycznymi ESC/ESH</p>')
@@ -655,7 +642,10 @@ def register_callbacks(app, project_root_path):
         """
         if stored_data is None:
             return {}
-        df = pd.read_json(StringIO(stored_data), orient='split')
+
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         return generate_circadian_rhythm_chart(df)  # Wywołanie bez dat generuje widok statyczny
 
     # =========================================================================
@@ -712,7 +702,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return 0, {0: 'Brak danych'}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return 0, {0: 'Brak danych'}
         unique_days = sorted(df['Datetime'].dt.date.unique())
 
         # Animacja jest możliwa tylko jeśli mamy co najmniej 7 dni
@@ -751,7 +743,9 @@ def register_callbacks(app, project_root_path):
         if stored_data is None:
             return {}
 
-        df = pd.read_json(StringIO(stored_data), orient='split')
+        df = parse_store(stored_data)
+        if df is None:
+            return {}
         unique_days = sorted(df['Datetime'].dt.date.unique())
 
         if len(unique_days) < 7:

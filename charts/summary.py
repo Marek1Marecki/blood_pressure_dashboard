@@ -14,7 +14,7 @@ Obliczane wskaźniki (KPI) to:
 
 import pandas as pd
 import plotly.express as px
-from .utils import utworz_pusty_wykres
+from .utils import utworz_pusty_wykres, validate_dataframe
 from config import KOLORY_ESC, KOLEJNOSC_ESC, TEMPLATE_PLOTLY
 
 
@@ -46,6 +46,12 @@ def generate_summary_data(df):
             W przypadku błędu lub braku danych, zwraca odpowiednie
             wartości zastępcze.
     """
+    required = ['Datetime', 'SYS', 'DIA', 'Kategoria']
+    valid, msg = validate_dataframe(df, required)
+    if not valid:
+        placeholder = utworz_pusty_wykres(msg)
+        return "B/D", "B/D", "B/D", "B/D", placeholder
+
     if df.empty:
         return "B/D", "B/D", "B/D", "B/D", utworz_pusty_wykres()
 
@@ -54,8 +60,23 @@ def generate_summary_data(df):
         avg_sys = f"{df['SYS'].mean():.0f}"
         avg_dia = f"{df['DIA'].mean():.0f}"
 
-        max_sys_row = df.loc[df['SYS'].idxmax()]
-        max_reading_text = f"{max_sys_row['SYS']:.0f} / {max_sys_row['DIA']:.0f}"
+        if not df.empty:
+            # 1. Ustal okno czasowe (ostatnie 30 dni od ostatniego pomiaru)
+            end_date = df['Datetime'].max()
+            start_date = end_date - pd.Timedelta(days=30)
+
+            # 2. Przefiltruj dane do tego okna
+            df_last_30_days = df[df['Datetime'] >= start_date]
+
+            # 3. Znajdź najwyższy pomiar w przefiltrowanych danych
+            if not df_last_30_days.empty:
+                max_sys_row = df_last_30_days.loc[df_last_30_days['SYS'].idxmax()]
+                max_reading_text = f"{max_sys_row['SYS']:.0f} / {max_sys_row['DIA']:.0f}"
+            else:
+                # Co jeśli w ostatnich 30 dniach nie ma pomiarów
+                max_reading_text = "Brak"
+        else:
+            max_reading_text = "B/D"
 
         # Pomiary w normie (Optymalne + Prawidłowe) - zgodnie z wytycznymi <130/80
         in_norm = df['Kategoria'].isin(['Optymalne', 'Prawidłowe'])

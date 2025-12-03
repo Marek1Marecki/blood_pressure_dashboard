@@ -8,7 +8,7 @@ Interaktywny dashboard do wizualizacji i analizy pomiarów ciśnienia krwi, zbud
 
 - **Pełna Modularyzacja**: Kod został podzielony na logiczne moduły (dane, wykresy, layout, callbacki), co sprawia, że jest niezwykle czytelny, łatwy w utrzymaniu i rozbudowie.
 - **Interaktywne Wykresy**: 9 różnych zakładek analitycznych, które pozwalają na dogłębną analizę danych pod różnymi kątami.
-- **Automatyczne Odświeżanie**: Możliwość ponownego wczytania danych z pliku Excel bez restartowania aplikacji.
+- **Automatyczne Odświeżanie**: Pobieranie świeżych danych z Google Sheets jednym kliknięciem (z lokalnym cache dla szybkości).
 - **Eksport do HTML**: Jednym kliknięciem można wygenerować samodzielny plik HTML zawierający wszystkie kluczowe wykresy i podsumowania.
 - **Inteligentny Cache**: Aplikacja wykorzystuje cache w formacie Feather, dzięki czemu ponowne uruchomienia są błyskawiczne.
 - **Zgodność z Wytycznymi**: Logika klasyfikacji ciśnienia jest w pełni zgodna z aktualnymi standardami ESC/ESH.
@@ -20,9 +20,11 @@ Interaktywny dashboard do wizualizacji i analizy pomiarów ciśnienia krwi, zbud
     pip install -r requirements.txt
     ```
 
-2.  **Przygotuj plik z danymi:**
-    - Upewnij się, że w głównym folderze projektu znajduje się plik `Pomiary_SYS_DIA.xlsx`.
-    - Plik musi zawierać kolumny: `Data`, `Godzina`, `SYS`, `DIA`, `PUL`.
+2.  **Skonfiguruj źródło Google Sheets:**
+    - Utwórz arkusz z kolumnami **`Data`, `Godzina`, `SYS`, `DIA`, `PUL`**.
+    - W Google Cloud Console utwórz **Service Account**, pobierz klucz JSON i zapisz go jako `google_credentials.json` w głównym folderze projektu.
+    - Udostępnij arkusz adresowi e-mail konta serwisowego (tryb „Editor”).
+    - Skopiuj URL arkusza i ustaw `GOOGLE_SHEET_URL` oraz `WORKSHEET_NAME` w `config.py`.
 
 3.  **Uruchom aplikację:**
     ```bash
@@ -40,6 +42,23 @@ Projekt jest podzielony na logiczne moduły, co ułatwia nawigację i rozwój.
 -   **`config.py`**: Centralny plik konfiguracyjny. Tutaj zdefiniowane są wszystkie stałe, takie jak nazwy plików, progi ciśnienia, kolory wykresów itp.
 -   **`data_processing.py`**: Moduł odpowiedzialny za wczytywanie, czyszczenie i przetwarzanie danych. To tutaj odbywa się klasyfikacja ciśnienia i obliczanie dodatkowych wskaźników.
 -   **`requirements.txt`**: Lista wszystkich zależności projektu.
+
+## 🔐 Przepływ Google Sheets (krok po kroku)
+
+1. **Autoryzacja** – plik `google_credentials.json` (klucz konta serwisowego) jest wczytywany przez `gspread.service_account`. Nie commituj tego pliku do repozytorium! 
+2. **Dostęp do arkusza** – adres e-mail konta serwisowego musi mieć uprawnienia „Editor” do dokumentu wskazanego w `GOOGLE_SHEET_URL`/`WORKSHEET_NAME`.
+3. **Pobranie danych** – `get_as_dataframe` z `gspread_dataframe` pobiera dane wraz z formułami (ustaw `evaluate_formulas=True`).
+4. **Cache** – wynik zapisywany jest lokalnie w `DATA_CACHE_FILE` na czas `DATA_CACHE_TTL_MINUTES`, dzięki czemu UI reaguje szybciej przy częstych odświeżeniach.
+5. **Limit API** – Google Sheets dopuszcza ok. 60 żądań/min na projekt; cache i przycisk „⏭️ Odśwież bez cache” pomagają kontrolować ruch.
+
+## ⚠️ Typowe błędy i jak je diagnozować
+
+| Komunikat | Co oznacza? | Jak naprawić |
+| --- | --- | --- |
+| `❌ Błąd: Nie znaleziono arkusza Google` | URL w `config.py` jest błędny albo konto nie ma dostępu | Zweryfikuj `GOOGLE_SHEET_URL`, udostępnij arkusz kontu serwisowemu |
+| `❌ Brakujące kolumny: ...` | Arkusz nie posiada wymaganych nagłówków | Dodaj kolumny `Data`, `Godzina`, `SYS`, `DIA`, `PUL` |
+| `⚠️ ... Pokazuję dane z cache sprzed ...` | API zwróciło błąd, ale istnieje ostatni cache | Napraw przyczynę (np. quota), możesz wymusić odświeżenie przyciskiem „⏭️” |
+| `json.decoder.JSONDecodeError` w konsoli | Plik `google_credentials.json` ma zły format | Pobierz klucz ponownie i upewnij się, że zapis jest kompletny |
 
 ### Moduły Aplikacji
 

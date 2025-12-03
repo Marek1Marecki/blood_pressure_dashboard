@@ -1,23 +1,30 @@
 """Moduł odpowiedzialny za wczytywanie i przetwarzanie danych pomiarowych.
 
 Zawiera funkcje do:
-- Wczytywania danych z pliku Excel z inteligentnym wykorzystaniem pamięci podręcznej (cache).
+- Wczytywania danych z Arkusza Google wraz z prostym mechanizmem cache.
 - Klasyfikacji pomiarów ciśnienia krwi zgodnie z najnowszymi wytycznymi ESC/ESH.
 - Wzbogacania danych o dodatkowe kolumny, takie jak MAP (średnie ciśnienie tętnicze)
   i PP (ciśnienie tętna).
 """
 import os
+import logging
+from datetime import datetime, timedelta
+
 import pandas as pd
 import numpy as np
-import tempfile
-from config import PROGI_ESC, STANDARDOWE_GODZINY, NAZWA_PLIKU_EXCEL
+import gspread
+from gspread_dataframe import get_as_dataframe
+from config import (
+    PROGI_ESC,
+    STANDARDOWE_GODZINY,
+    GOOGLE_SHEET_URL,
+    WORKSHEET_NAME,
+    GOOGLE_CREDENTIALS_FILE,
+    DATA_CACHE_FILE,
+    DATA_CACHE_TTL_MINUTES,
+)
 
-# --- Logika Cache'u ---
-CACHE_DIR = os.path.join(tempfile.gettempdir(), "blood_pressure_dashboard_cache")
-NAZWA_PLIKU_FEATHER = "pomiary_cache_v3.feather"  # ← ZMIENIONA NAZWA (wymuś przebudowę)
-os.makedirs(CACHE_DIR, exist_ok=True)
-# --- Koniec Logiki Cache'u ---
-
+logger = logging.getLogger(__name__)
 
 def klasyfikuj_cisnienie_esc_wektorowo(df):
     """Klasyfikuje pomiary ciśnienia krwi do odpowiednich kategorii.
@@ -42,7 +49,7 @@ def klasyfikuj_cisnienie_esc_wektorowo(df):
     # KLUCZOWA KOLEJNOŚĆ: ISH JAKO PIERWSZE!
     conditions = [
         # 1. IZOLOWANE NADCIŚNIENIE SKURCZOWE - ABSOLUTNY PRIORYTET!
-        # ⚠️ POPRAWKA: Używamy p['nadcisnienie_1']['dia'] (90), NIE p['podwyzszone']['dia'] (80)!
+        # POPRAWKA: Używamy p['nadcisnienie_1']['dia'] (90), NIE p['podwyzszone']['dia'] (80)!
         (df['SYS'] >= p['nadcisnienie_1']['sys']) & (df['DIA'] < p['nadcisnienie_1']['dia']),
 
         # 2. NADCIŚNIENIE 3°
@@ -75,176 +82,96 @@ def klasyfikuj_cisnienie_esc_wektorowo(df):
     # DIAGNOSTYKA
     ish_pomiary = df[df['Kategoria'] == 'Izolowane nadciśnienie skurczowe']
     if not ish_pomiary.empty:
-        print(f"\n🔍 Znaleziono {len(ish_pomiary)} pomiarów ISH:")
+        logger.debug("Znaleziono %d pomiarów ISH", len(ish_pomiary))
         for _, row in ish_pomiary.head(10).iterrows():
-            print(f"   SYS={row['SYS']}, DIA={row['DIA']}")
-
-    return df
-    """
-    Klasyfikuje pomiar ciśnienia wektorowo za pomocą np.select.
-    
-    STRUKTURA PROGÓW W CONFIG.PY:
-    ==============================
-    Wartości w PROGI_ESC oznaczają GÓRNE granice (włącznie) każdej kategorii.
-    
-    ZASADA KLINICZNA - KLUCZOWE!
-    =============================
-    Przy niejednoznacznych parach klasyfikacja do WYŻSZEJ kategorii,
-    ALE z WYJĄTKIEM dla Izolowanego Nadciśnienia Skurczowego (ISH):
-    
-    ISH = SYS ≥ 140 AND DIA < 90
-    
-    To oznacza, że ISH ma PRIORYTET nad logiką "wyższej kategorii":
-    - 154/80: SYS → N1, DIA → Podwyższone → WYNIK: ISH (nie N1!)
-    - 142/72: SYS → N1, DIA → Prawidłowe → WYNIK: ISH (nie N1!)
-    - 185/85: SYS → N3, DIA → Podwyższone → WYNIK: ISH (nie N3!)
-    
-    WYJĄTEK: Jeśli DIA ≥ 90, wtedy normalna logika wyższej kategorii:
-    - 154/95: SYS → N1, DIA → N1 → WYNIK: N1 ✓
-    - 185/95: SYS → N3, DIA → N1 → WYNIK: N3 ✓
-    
-    PRZYKŁADY KLASYFIKACJI:
-    =======================
-    SYS=112, DIA=68  → Optymalne ✓
-    SYS=127, DIA=78  → Prawidłowe ✓
-    SYS=142, DIA=72  → ISH ✓ (SYS≥140, DIA<90)
-    SYS=154, DIA=80  → ISH ✓ (SYS≥140, DIA<90)
-    SYS=154, DIA=95  → Nadciśnienie 1° ✓ (DIA≥90)
-    SYS=185, DIA=85  → ISH ✓ (SYS≥140, DIA<90)
-    SYS=185, DIA=95  → Nadciśnienie 3° ✓ (SYS≥180)
-    """
-
-    p = PROGI_ESC
-
-    # KRYTYCZNA KOLEJNOŚĆ: ISH PRZED wszystkimi kategoriami nadciśnienia!
-    conditions = [
-        # 1. IZOLOWANE NADCIŚNIENIE SKURCZOWE - NAJWYŻSZY PRIORYTET!
-        # SYS ≥ 140 ALE DIA < 90
-        # Ten warunek MUSI być PIERWSZY, żeby:
-        # - 154/80 → ISH (nie N1)
-        # - 142/72 → ISH (nie N1)
-        # - 185/85 → ISH (nie N3)
-        (df['SYS'] >= p['nadcisnienie_1']['sys']) & (df['DIA'] < p['podwyzszone']['dia']),
-
-        # 2. NADCIŚNIENIE 3°
-        # SYS ≥ 180 LUB DIA ≥ 110
-        # Sprawdzane DOPIERO PO ISH, więc:
-        # - 185/85 → ISH (złapane wcześniej)
-        # - 185/95 → N3 (bo DIA >= 90, nie pasuje do ISH)
-        (df['SYS'] >= p['nadcisnienie_3']['sys']) | (df['DIA'] >= p['nadcisnienie_3']['dia']),
-
-        # 3. NADCIŚNIENIE 2°
-        # SYS ≥ 160 LUB DIA ≥ 100
-        (df['SYS'] >= p['nadcisnienie_2']['sys']) | (df['DIA'] >= p['nadcisnienie_2']['dia']),
-
-        # 4. NADCIŚNIENIE 1°
-        # SYS ≥ 140 LUB DIA ≥ 90
-        # Sprawdzane DOPIERO PO ISH, więc:
-        # - 154/80 → ISH (złapane wcześniej)
-        # - 154/95 → N1 (bo DIA >= 90, nie pasuje do ISH)
-        (df['SYS'] >= p['nadcisnienie_1']['sys']) | (df['DIA'] >= p['nadcisnienie_1']['dia']),
-
-        # 5. PODWYŻSZONE
-        # SYS ≥ 130 LUB DIA ≥ 80
-        (df['SYS'] >= p['podwyzszone']['sys']) | (df['DIA'] >= p['podwyzszone']['dia']),
-
-        # 6. PRAWIDŁOWE
-        # SYS ≥ 120 LUB DIA ≥ 70
-        (df['SYS'] >= p['optymalne']['sys']) | (df['DIA'] >= p['optymalne']['dia']),
-    ]
-
-    choices = [
-        "Izolowane nadciśnienie skurczowe",  # Teraz PIERWSZE!
-        "Nadciśnienie 3°",
-        "Nadciśnienie 2°",
-        "Nadciśnienie 1°",
-        "Podwyższone",
-        "Prawidłowe",
-    ]
-
-    # Default (gdy żaden warunek nie pasuje) = Optymalne
-    # Czyli: SYS < 120 AND DIA < 70
-    df['Kategoria'] = np.select(conditions, choices, default="Optymalne")
+            logger.debug("ISH przykład: SYS=%s, DIA=%s", row['SYS'], row['DIA'])
 
     return df
 
 
-def wczytaj_i_przetworz_dane(sciezka_folderu_projektu):
-    """Wczytuje i przetwarza dane pomiarowe z pliku Excel.
-
-    Funkcja implementuje mechanizm pamięci podręcznej (cache) w formacie
-    Feather, aby znacząco przyspieszyć wczytywanie danych przy kolejnych
-    uruchomieniach aplikacji. Cache jest automatycznie odświeżany,
-    gdy plik Excel zostanie zmodyfikowany.
-
-    Proces przetwarzania obejmuje:
-    - Konwersję kolumn daty i godziny do formatu datetime.
-    - Usunięcie wierszy z brakującymi danymi.
-    - Obliczenie dodatkowych wskaźników (MAP, PP).
-    - Klasyfikację każdego pomiaru do odpowiedniej kategorii ciśnienia.
+def wczytaj_i_przetworz_dane(sciezka_folderu_projektu, force_refresh=False):
+    """Wczytuje i przetwarza dane z Arkusza Google z prostym cache.
 
     Args:
-        sciezka_folderu_projektu (str): Ścieżka do głównego folderu
-            projektu, w którym znajduje się plik Excel z danymi.
-
-    Returns:
-        tuple[pd.DataFrame, str]: Krotka zawierająca:
-            - ramkę danych (pd.DataFrame) z przetworzonymi pomiarami,
-            - komunikat (str) informujący o statusie operacji
-              (np. o sukcesie, błędzie lub źródle wczytania danych).
+        sciezka_folderu_projektu (str): Ścieżka bazowa projektu.
+        force_refresh (bool): Gdy True, pomija cache TTL i wymusza pobranie.
     """
-    sciezka_excel = os.path.join(sciezka_folderu_projektu, NAZWA_PLIKU_EXCEL)
-    sciezka_feather = os.path.join(CACHE_DIR, NAZWA_PLIKU_FEATHER)
 
-    print(f"[DIAGNOSTYKA] Program szuka pliku Excel pod ścieżką: {sciezka_excel}")
-    print(f"[DIAGNOSTYKA] Program używa pliku cache pod ścieżką: {sciezka_feather}")
+    cache_path = os.path.join(sciezka_folderu_projektu, DATA_CACHE_FILE)
+    cache_ttl = timedelta(minutes=DATA_CACHE_TTL_MINUTES)
+    now = datetime.now()
 
-    df = None
-    cache_jest_aktualny = False
+    def _read_cache():
+        if not os.path.exists(cache_path):
+            return None, None
+        try:
+            payload = pd.read_pickle(cache_path)
+            if isinstance(payload, dict) and 'df' in payload:
+                return payload['df'], payload.get('status')
+            return payload, None
+        except Exception as err:
+            logger.warning("Nie udało się odczytać cache: %s", err)
+            return None, None
 
+    cached_df, cached_status = _read_cache()
+    cache_age = None
+    if cached_df is not None and os.path.exists(cache_path):
+        cache_age = now - datetime.fromtimestamp(os.path.getmtime(cache_path))
+
+    if (
+        not force_refresh
+        and cached_df is not None
+        and cache_age is not None
+        and cache_age <= cache_ttl
+    ):
+        status = cached_status or (
+            f"⚡ Wczytano {len(cached_df)} pomiarów z cache (<= {DATA_CACHE_TTL_MINUTES} min)."
+        )
+        return cached_df.copy(), status
+
+    if force_refresh:
+        logger.info("⏭️ Pomijam cache - wymuszam pobranie z Google Sheets...")
+    else:
+        logger.info("🌍 Łączenie z Google Sheets...")
     try:
-        # Sprawdź, czy plik Excel w ogóle istnieje
-        if not os.path.exists(sciezka_excel):
-            raise FileNotFoundError
+        credentials_path = os.path.join(sciezka_folderu_projektu, GOOGLE_CREDENTIALS_FILE)
 
-        # Sprawdź, czy cache jest aktualny
-        if os.path.exists(sciezka_feather):
-            czas_modyfikacji_excel = os.path.getmtime(sciezka_excel)
-            czas_modyfikacji_feather = os.path.getmtime(sciezka_feather)
-            if czas_modyfikacji_feather >= czas_modyfikacji_excel:
-                cache_jest_aktualny = True
+        gc = gspread.service_account(filename=credentials_path)
+        spreadsheet = gc.open_by_url(GOOGLE_SHEET_URL)
+        worksheet = spreadsheet.worksheet(WORKSHEET_NAME)
 
-        # Wczytaj dane
-        if cache_jest_aktualny:
-            print("⚡️ Wczytywanie danych z szybkiego cache'u (Feather)...")
-            df = pd.read_feather(sciezka_feather)
-            zrodlo_danych = "cache"
-        else:
-            print("🐌 Wczytywanie danych z pliku Excel (aktualizacja cache'u)...")
-            df = pd.read_excel(sciezka_excel)
-            zrodlo_danych = "Excel"
+        # Pobierz dane. Ignoruj pierwszy wiersz (nagłówki) i użyj własnych nazw, jeśli trzeba.
+        df = get_as_dataframe(worksheet, evaluate_formulas=True)
+        # Usuń puste wiersze, które gspread czasem dołącza
+        df.dropna(how='all', inplace=True)
 
-        # --- Dalsze przetwarzanie danych (wspólne dla obu ścieżek) ---
+        required_columns = ['Data', 'Godzina', 'SYS', 'DIA', 'PUL']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            pretty_missing = ', '.join(missing_columns)
+            return pd.DataFrame(), f"❌ Brakujące kolumny: {pretty_missing}"
 
-        # Konwersja kolumn daty i godziny, jeśli istnieją w surowych danych
-        if 'Data' in df.columns and 'Godzina' in df.columns:
-            df['Datetime'] = pd.to_datetime(
-                df['Data'].astype(str) + ' ' + df['Godzina'].astype(str), errors='coerce'
-            )
-        # Jeśli kolumna Datetime już istnieje (z cache'u), upewnij się, że jest w dobrym formacie
-        elif 'Datetime' in df.columns:
-             df['Datetime'] = pd.to_datetime(df['Datetime'], errors='coerce')
+        logger.info("Pomyślnie pobrano %d wierszy z Google Sheets.", len(df))
 
-        df.dropna(subset=['Datetime'], inplace=True)
+        for col in ['SYS', 'DIA', 'PUL']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        datetime_series = pd.to_datetime(
+            df['Data'].astype(str) + ' ' + df['Godzina'].astype(str), errors='coerce'
+        )
+        if datetime_series.dt.tz is not None:
+            datetime_series = datetime_series.dt.tz_localize(None)
+        df['Datetime'] = datetime_series
+
+        df.dropna(subset=['Datetime', 'SYS', 'DIA', 'PUL'], inplace=True)
         df = df.sort_values('Datetime').reset_index(drop=True)
 
         liczba_przed = len(df)
-        df.dropna(subset=['SYS', 'DIA', 'PUL'], inplace=True)
-        liczba_po = len(df)
+        liczba_po = len(df)  # Pozostaje dla kompatybilności z wcześniejszą diagnozą
 
         df['MAP'] = round((df['SYS'] + 2 * df['DIA']) / 3, 1)
         df['PP'] = df['SYS'] - df['DIA']
-
         df['Hour'] = df['Datetime'].dt.hour
         df['Dzień'] = df['Datetime'].dt.date
         df['Godzina Pomiaru'] = df['Hour'].apply(
@@ -254,34 +181,31 @@ def wczytaj_i_przetworz_dane(sciezka_folderu_projektu):
             lambda x: 'Weekend' if x >= 5 else 'Dzień roboczy'
         )
 
-        # Zastosowanie nowej, wektorowej klasyfikacji
         df = klasyfikuj_cisnienie_esc_wektorowo(df)
 
-        # *** KLUCZOWA POPRAWKA: Zapisz cache DOPIERO TERAZ ***
-        # Po wszystkich przekształceniach i z czytelnym try-except
-        if not cache_jest_aktualny:
-            try:
-                # Resetujemy index przed zapisem (wymóg Feather)
-                df_do_zapisu = df.copy()
-                df_do_zapisu.reset_index(drop=True, inplace=True)
-
-                # Konwertuj kolumnę 'Dzień' na string (object -> datetime.date powoduje błędy w Feather)
-                if 'Dzień' in df_do_zapisu.columns:
-                    df_do_zapisu['Dzień'] = df_do_zapisu['Dzień'].astype(str)
-
-                df_do_zapisu.to_feather(sciezka_feather)
-                print(f"✅ Cache zapisany pomyślnie: {sciezka_feather}")
-            except Exception as e_cache:
-                print(f"⚠️ Błąd zapisu cache (nie krytyczny): {e_cache}")
-                print(f"   Aplikacja działa normalnie, ale przy następnym uruchomieniu dane zostaną ponownie wczytane z Excel.")
-
-        komunikat = f"✅ Pomyślnie wczytano {len(df)} pomiarów z pliku {zrodlo_danych}. "
+        komunikat = f"✅ Pomyślnie wczytano {len(df)} pomiarów z Google Sheets."
         if liczba_przed > liczba_po:
-            komunikat += f"Usunięto {liczba_przed - liczba_po} niekompletnych wierszy."
+            komunikat += f" Usunięto {liczba_przed - liczba_po} niekompletnych wierszy."
+
+        try:
+            pd.to_pickle(
+                {
+                    'df': df,
+                    'status': komunikat,
+                    'fetched_at': datetime.now().isoformat()
+                },
+                cache_path
+            )
+        except Exception as cache_err:
+            logger.warning("Nie udało się zapisać cache: %s", cache_err)
 
         return df, komunikat
 
-    except FileNotFoundError:
-        return pd.DataFrame(), f"❌ Błąd: Nie znaleziono pliku {NAZWA_PLIKU_EXCEL} w folderze projektu."
-    except Exception as e:
-        return pd.DataFrame(), f"❌ Błąd podczas wczytywania lub przetwarzania danych: {e}"
+    except gspread.exceptions.SpreadsheetNotFound as exc:
+        error_msg = f"❌ Błąd: Nie znaleziono arkusza Google. Sprawdź URL lub uprawnienia."
+    except gspread.exceptions.WorksheetNotFound as exc:
+        error_msg = f"❌ Błąd: Nie znaleziono zakładki '{WORKSHEET_NAME}' w arkuszu."
+    except Exception as exc:
+        error_msg = f"❌ Błąd podczas łączenia z Google Sheets: {exc}"
+
+    return pd.DataFrame(), error_msg
