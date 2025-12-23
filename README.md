@@ -26,6 +26,18 @@ Interaktywny dashboard do wizualizacji i analizy pomiarów ciśnienia krwi, zbud
     - Udostępnij arkusz adresowi e-mail konta serwisowego (tryb „Editor”).
     - Skopiuj URL arkusza i ustaw `GOOGLE_SHEET_URL` oraz `WORKSHEET_NAME` w `config.py`.
 
+    ## Konfiguracja Google Sheets
+    Aplikacja korzysta z Google Sheets.
+    
+    ### Wymagane zmienne środowiskowe (.env)
+    Utwórz plik `.env` w katalogu projektu:    
+    GOOGLE_SHEET_URL=...
+    GOOGLE_WORKSHEET_NAME=Pomiary
+    GOOGLE_CREDENTIALS_FILE=google_credentials.json
+    
+    Plik `.env` nie jest częścią repozytorium.`
+
+
 3.  **Uruchom aplikację:**
     ```bash
     python app.py

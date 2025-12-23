@@ -1,3 +1,10 @@
+# /config.py
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 """Moduł konfiguracyjny aplikacji.
 
 Ten plik centralizuje wszystkie stałe, progi, palety kolorów i inne
@@ -110,13 +117,16 @@ EXPORT_CHART_DEFINITIONS = [
 # =============================================================================
 # KONFIGURACJA GOOGLE SHEETS
 # =============================================================================
-# Wklej tutaj pełny URL do swojego Arkusza Google
-GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1LXsCX071uHog7Ejpp5nCK5wZYJzkCQg0eo3bqBw98LE/edit"
-# Nazwa arkusza (zakładki) wewnątrz pliku, z której pobieramy dane
-WORKSHEET_NAME = "Pomiary"
+GOOGLE_SHEET_URL = os.getenv("GOOGLE_SHEET_URL")
+WORKSHEET_NAME = os.getenv("GOOGLE_WORKSHEET_NAME", "Pomiary")
+GOOGLE_CREDENTIALS_FILE = os.getenv(
+    "GOOGLE_CREDENTIALS_FILE", "google_credentials.json"
+)
 
-# Plik z danymi uwierzytelniającymi
-GOOGLE_CREDENTIALS_FILE = "google_credentials.json"
+if not GOOGLE_SHEET_URL:
+    raise RuntimeError(
+        "Brak GOOGLE_SHEET_URL. Ustaw zmienną w pliku .env"
+    )
 
 
 # =============================================================================

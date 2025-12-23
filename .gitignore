@@ -1,9 +1,19 @@
-/.qodo/
+# Virtual env
 /.venv/
+
+.env
+
+# Python
 __pycache__/
 *.pyc
 *.pyd
+
+# Logs
 *.log
+
+# IDE
+.idea/
+
 # Google Sheets credentials (lokalnie)
 google_credentials.json
 
@@ -13,7 +23,20 @@ google_credentials.json
 # Cache danych analitycznych
 *.pkl
 *.feather
+
+# HTML i pdf output
+/*.html
+/*.pdf
+/*.xlsx
+
+# Coverage / tests
 .coverage
+htmlcov/
+.pytest_cache/
+
+# Tooling / local helpers
+/.qodo/
 /.specify/
 /.windsurf/
-/Dashboard_Cisnienie_20251104_225924.html
+
+*:Zone.Identifier

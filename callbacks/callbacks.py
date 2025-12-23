@@ -38,10 +38,21 @@ from config import EXPORT_CHART_DEFINITIONS, KOLORY_ESC
 
 logger = logging.getLogger(__name__)
 
+
 @lru_cache(maxsize=16)
 def _parse_store_cached(raw_json: str) -> pd.DataFrame:
     """Cache-aware parser for data stored in dcc.Store."""
-    return pd.read_json(StringIO(raw_json), orient='split')
+    df = pd.read_json(StringIO(raw_json), orient='split')
+
+    # Konwertuj kolumnę Datetime z powrotem na datetime, jeśli istnieje
+    if 'Datetime' in df.columns:
+        df['Datetime'] = pd.to_datetime(df['Datetime'], errors='coerce')
+
+    # Konwertuj kolumnę Data z powrotem na datetime, jeśli istnieje
+    if 'Data' in df.columns:
+        df['Data'] = pd.to_datetime(df['Data'], errors='coerce')
+
+    return df
 
 def parse_store(stored_data):
     """Safely parse JSON payload shared between callbacks and reuse cache."""
@@ -521,38 +532,53 @@ def register_callbacks(app, project_root_path):
                 f.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">')
                 f.write('<title>Dashboard Ciśnienia Krwi (wg aktualnych wytycznych)</title>')
                 f.write('<style>')
-                f.write('body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }')
+                f.write('body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }')
+                f.write('@page { size: A4; margin: 1.5cm; }')
+                f.write('.page { page-break-after: always; padding: 20px; box-sizing: border-box; }')
+                f.write('.page:last-child { page-break-after: auto; }')
                 f.write('h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }')
-                f.write('.chart-container { margin: 30px auto; background: white; padding: 20px; ')
-                f.write('border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 1200px; }')
+                f.write('.chart-container { margin: 20px 0; background: white; padding: 20px; ')
+                f.write('border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); page-break-inside: avoid; }')
                 f.write('.info { text-align: center; color: #666; font-size: 14px; margin: 10px 0; }')
                 f.write('.section-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); ')
-                f.write('color: white; padding: 15px; margin: 40px auto 20px auto; border-radius: 10px; ')
-                f.write('text-align: center; font-size: 1.3em; font-weight: bold; max-width: 1200px; ')
-                f.write('box-shadow: 0 4px 6px rgba(0,0,0,0.1); }')
-                f.write('.chart-title { color: #2c3e50; font-size: 0.9em; margin: 10px 0; ')
+                f.write('color: white; padding: 15px; margin: 20px 0; border-radius: 10px; ')
+                f.write('text-align: center; font-size: 1.3em; font-weight: bold; page-break-after: avoid; }')
+                f.write('.chart-title { color: #2c3e50; font-size: 1.1em; margin: 15px 0; ')
                 f.write('text-align: center; font-weight: 600; }')
-                f.write('.guidelines-table { width: 100%; max-width: 800px; margin: 30px auto; ')
-                f.write('border-collapse: collapse; box-shadow: 0 2px 8px rgba(0,0,0,0.1); ')
-                f.write('background: white; border-radius: 10px; overflow: hidden; }')
+                f.write('.guidelines-table { width: 100%; border-collapse: collapse; margin: 20px 0; ')
+                f.write('box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: white; page-break-inside: avoid; }')
                 f.write('.guidelines-table th { background: #f8f9fa; padding: 12px; ')
                 f.write('border-bottom: 2px solid #ddd; font-weight: bold; text-align: left; }')
                 f.write('.guidelines-table td { padding: 10px 12px; border-bottom: 1px solid #eee; }')
                 f.write('.guidelines-table tr:last-child td { border-bottom: none; }')
                 f.write('.guidelines-header { text-align: center; color: #2c3e50; ')
-                f.write('margin: 40px 0 20px 0; font-size: 1.5em; font-weight: bold; }')
-                f.write('.note-box { max-width: 800px; margin: 20px auto; padding: 15px; ')
-                f.write('background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 5px; ')
-                f.write('font-size: 13px; color: #666; font-style: italic; }')
+                f.write('margin: 20px 0; font-size: 1.5em; font-weight: bold; }')
+                f.write('.note-box { margin: 20px 0; padding: 15px; background: #fff3cd; ')
+                f.write('border-left: 4px solid #ffc107; border-radius: 5px; page-break-inside: avoid; }')
+                
+                # Style dla druku
+                f.write('@media print {')
+                f.write('  body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }')
+                f.write('  .chart-container { box-shadow: none; border: 1px solid #eee; }')
+                f.write('  .page { margin: 0; padding: 0; }')
+                f.write('  .section-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }')
+                f.write('  .note-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }')
+                f.write('  .no-print { display: none !important; }')
+                f.write('  @page { margin: 1.5cm; }')
+                f.write('}')
                 f.write('</style>')
                 f.write('</head><body>')
 
+                # Strona tytułowa
+                f.write('<div class="page">')
                 f.write('<h1>💓 Dashboard Pomiarów Ciśnienia Krwi</h1>')
                 f.write(f'<p class="info">Wygenerowano: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>')
                 f.write(f'<p class="info">Liczba pomiarów: <strong>{len(df)}</strong> | ')
-                f.write(f'Zakres dat: <strong>{df["Datetime"].min().strftime("%Y-%m-%d")} - {df["Datetime"].max().strftime("%Y-%m-%d")}</strong></p>')
+                f.write(f'Zakres dat: <strong>{df["Data"].min().strftime("%Y-%m-%d")} - {df["Data"].max().strftime("%Y-%m-%d")}</strong></p>')
+                f.write('</div>')
 
-                # ===== TABELKA WYTYCZNYCH NA POCZĄTKU =====
+                # Strona z wytycznymi
+                f.write('<div class="page">')
                 f.write('<h2 class="guidelines-header">📋 Aktualne Wytyczne Ciśnienia Tętniczego</h2>')
                 f.write('<table class="guidelines-table">')
                 f.write('<thead><tr>')
@@ -589,9 +615,11 @@ def register_callbacks(app, project_root_path):
                 f.write('⚕️ <strong>Zasada klasyfikacji:</strong> Przy niejednoznacznych parach ')
                 f.write('(np. SYS w jednej kategorii, DIA w innej) klasyfikacja następuje do wyższej kategorii.')
                 f.write('</div>')
+                f.write('</div>')
 
                 # Grupowanie wykresów według sekcji
                 for sekcja_nazwa, sekcja_wykresy in sekcje.items():
+                    f.write(f'<div class="page">')  # Nowa strona dla każdej sekcji
                     f.write(f'<div class="section-header">📊 {sekcja_nazwa}</div>')
 
                     for wykres_key in sekcja_wykresy:
@@ -603,13 +631,18 @@ def register_callbacks(app, project_root_path):
                         f.write(wykres.to_html(
                             full_html=False,
                             include_plotlyjs='cdn',
-                            config={'responsive': True, 'displayModeBar': True}
+                            config={'responsive': True, 'displayModeBar': False}  # Wyłączony pasek w druku
                         ))
                         f.write('</div>')
+                    
+                    f.write('</div>')
 
-                f.write('<hr style="margin: 40px auto; max-width: 1200px; border: none; border-top: 2px solid #ddd;">')
+                # Stopka na osobnej stronie
+                f.write('<div class="page" style="text-align: center; padding-top: 2cm;">')
+                f.write('<hr style="margin: 20px auto; max-width: 80%; border: none; border-top: 1px solid #ddd;">')
                 f.write('<p class="info">📋 Dashboard zgodny z aktualnymi wytycznymi ESC/ESH</p>')
                 f.write('<p class="info" style="font-size: 12px; color: #999;">Wygenerowano przez Blood Pressure Dashboard v2.0</p>')
+                f.write('</div>')
                 f.write('</body></html>')
 
             liczba_wykresow = len(wykresy)

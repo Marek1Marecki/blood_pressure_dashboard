@@ -18,17 +18,42 @@ Aby uruchomić aplikację, należy wykonać polecenie w terminalu:
 """
 
 import os
+import sys
 import logging
+from io import TextIOWrapper
 from logging.handlers import RotatingFileHandler
 from dash import Dash
 
+
+def _ensure_utf8_stream(stream):
+    """Return a text stream that can handle UTF-8 output on Windows consoles."""
+    if stream is None:
+        return None
+
+    # Python 3.7+ exposes reconfigure on TextIOWrapper for safe runtime changes.
+    if hasattr(stream, "reconfigure"):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+            return stream
+        except (AttributeError, ValueError, OSError):
+            pass
+
+    if hasattr(stream, "buffer"):
+        return TextIOWrapper(stream.buffer, encoding="utf-8", errors="replace")
+
+    return stream
+
+
 # Konfiguracja loggingu aplikacji
+utf8_stdout = _ensure_utf8_stream(getattr(sys, "stdout", None))
+utf8_stderr = _ensure_utf8_stream(getattr(sys, "stderr", None))
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        RotatingFileHandler('app.log', maxBytes=5 * 1024 * 1024, backupCount=3),
-        logging.StreamHandler()
+        RotatingFileHandler('app.log', maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8'),
+        logging.StreamHandler(stream=utf8_stderr or sys.stderr)
     ]
 )
 
