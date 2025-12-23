@@ -127,25 +127,9 @@ register_callbacks(app, BASE_DIR)
 # =============================================================================
 # URUCHOMIENIE APLIKACJI
 # =============================================================================
-if __name__ == '__main__':
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'True':
-        print("""
-        ╔═══════════════════════════════════════════════════════════════╗
-        ║   💓 Dashboard Pomiarów Ciśnienia Krwi                        ║
-        ║   📋 Zgodny z wytycznymi ESC/ESH                              ║
-        ║                                                               ║
-        ║   ✅ Aplikacja uruchomiona pomyślnie!                         ║
-        ║   🌐 Otwórz przeglądarkę: http://127.0.0.1:8050               ║
-        ║                                                               ║
-        ║   📂 Struktura modularna - łatwe dodawanie zakładek!          ║
-        ║   📊 9 zakładek z analizami                                   ║
-        ║   🔄 Automatyczne odświeżanie danych                          ║
-        ║   📥 Eksport do HTML                                          ║
-        ║                                                               ║
-        ║   📚 Dokumentacja: README.md                                  ║
-        ║   ⚡ Szybki start: QUICK_START.md                             ║
-        ║   🎓 Przykład: EXAMPLE_NEW_TAB.md                             ║
-        ╚═══════════════════════════════════════════════════════════════╝
-        """)
-
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(
+        host="0.0.0.0",
+        port=8050,
+        debug=False
+    )

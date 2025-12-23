@@ -1,0 +1,12 @@
+
+services:
+  dashboard:
+    build: .
+    container_name: blood_pressure_dashboard
+    ports:
+      - "8050:8050"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    restart: unless-stopped
