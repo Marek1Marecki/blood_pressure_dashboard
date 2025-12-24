@@ -1,6 +1,7 @@
 # Dashboard Pomiarów Ciśnienia Krwi - Wymagane biblioteki
 
 python-dotenv>=1.2.1
+gunicorn>=23.0.0
 
 # Framework i UI
 dash>=3.3.0

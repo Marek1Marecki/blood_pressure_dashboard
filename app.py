@@ -22,6 +22,7 @@ import sys
 import logging
 from io import TextIOWrapper
 from logging.handlers import RotatingFileHandler
+from flask import Flask, jsonify
 from dash import Dash
 
 
@@ -107,8 +108,13 @@ initial_df_json = initial_df.to_json(date_format='iso', orient='split')
 # =============================================================================
 # TWORZENIE APLIKACJI
 # =============================================================================
-print("🚀 Inicjalizacja aplikacji Dash...")
-app = Dash(__name__, suppress_callback_exceptions=True)
+server = Flask(__name__)
+@server.route("/health")
+def health():
+    return jsonify(status="ok"), 200
+
+app = Dash(__name__, server=server, suppress_callback_exceptions=True)
+
 app.title = "Analizator Ciśnienia Krwi"
 
 # Layout
@@ -117,7 +123,7 @@ app.layout = create_app_layout(
     initial_status=initial_status,
     initial_kpis=initial_kpis,
     initial_figures=initial_figures,
-    initial_df=initial_df  # Dodajemy DataFrame dla zakładki porównawczej
+   initial_df=initial_df  # Dodajemy DataFrame dla zakładki porównawczej
 )
 
 # Callbacki
